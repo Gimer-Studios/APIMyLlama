@@ -29,8 +29,6 @@ let db = new sqlite3.Database('./apiKeys.db', sqlite3.OPEN_READWRITE | sqlite3.O
   }
 });
 
-
-
 // Route for making a request to the Ollama API
 app.post('/generate', (req, res) => {
   const { apikey, prompt, model, stream, images, raw } = req.body;
@@ -53,7 +51,7 @@ app.post('/generate', (req, res) => {
       return res.status(403).json({ error: 'Invalid API Key' });
     }
 
-    // If the API key is valid, make a request to the Ollama API
+    // Make request to Ollama if key is valid.
     axios.post('http://localhost:11434/api/generate', { model, prompt, stream, images, raw })
       .then(response => res.json(response.data))
       .catch(error => {
@@ -62,6 +60,14 @@ app.post('/generate', (req, res) => {
       });
   });
 });
+
+let server;
+let currentPort;
+
+function startServer(port) {
+  currentPort = port;
+  server = app.listen(port, () => console.log(`Server running on port ${port}`));
+}
 
 // Close the database connection when the application is closed
 process.on('SIGINT', () => {
@@ -75,30 +81,51 @@ process.on('SIGINT', () => {
   });
 });
 
-// Command-line interface
+// Create CLI
 const rl = readline.createInterface({
   input: process.stdin,
   output: process.stdout
 });
 
-setTimeout(() => {
+function askForPort() {
   rl.question('Enter the port number: ', (port) => {
     fs.writeFile('port.conf', port, (err) => {
       if (err) {
         console.error('Error saving port number:', err.message);
       } else {
         console.log(`Port number saved to port.conf: ${port}`);
-        app.listen(port, () => console.log(`Server running on port ${port}`));
+        startServer(port);
         startCLI();
       }
     });
   });
+}
+
+setTimeout(() => {
+  if (fs.existsSync('port.conf')) {
+    fs.readFile('port.conf', 'utf8', (err, data) => {
+      if (err) {
+        console.error('Error reading port number from file:', err.message);
+        askForPort();
+      } else {
+        const port = parseInt(data.trim());
+        if (isNaN(port)) {
+          console.error('Invalid port number in port.conf');
+          askForPort();
+        } else {
+          startServer(port);
+          startCLI();
+        }
+      }
+    });
+  } else {
+    askForPort();
+  }
 }, 1000);
 
 function startCLI() {
   rl.on('line', (input) => {
-    const command = input.trim().split(' ')[0];
-    const argument = input.trim().split(' ')[1];
+    const [command, argument] = input.trim().split(' ');
     switch (command) {
       case 'generatekey':
         const apiKey = crypto.randomBytes(20).toString('hex');
@@ -137,6 +164,28 @@ function startCLI() {
             console.log(`API key added: ${argument}`);
           }
         });
+        break;
+      case 'changeport':
+        if (!argument || isNaN(argument)) {
+          console.log('Invalid port number');
+        } else {
+          const newPort = parseInt(argument);
+          server.close((err) => {
+            if (err) {
+              console.error('Error closing the server:', err.message);
+            } else {
+              console.log(`Server closed on port ${currentPort}`);
+              fs.writeFile('port.conf', newPort.toString(), (err) => {
+                if (err) {
+                  console.error('Error saving port number:', err.message);
+                } else {
+                  console.log(`Port number saved to port.conf: ${newPort}`);
+                  startServer(newPort);
+                }
+              });
+            }
+          });
+        }
         break;
       default:
         console.log('Unknown command');
