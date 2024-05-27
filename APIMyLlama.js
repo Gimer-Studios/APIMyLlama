@@ -29,43 +29,7 @@ let db = new sqlite3.Database('./apiKeys.db', sqlite3.OPEN_READWRITE | sqlite3.O
   }
 });
 
-// Route for generating a new API key
-app.post('/generatekey', (req, res) => {
-  const apiKey = crypto.randomBytes(20).toString('hex');
-  db.run('INSERT INTO apiKeys(key) VALUES(?)', [apiKey], function(err) {
-    if (err) {
-      console.error('Error inserting API key:', err.message);
-      res.status(500).json({ error: 'Error generating API key' });
-    } else {
-      res.json({ apiKey });
-    }
-  });
-});
 
-// Route for listing all API keys
-app.get('/listkey', (req, res) => {
-  db.all('SELECT key FROM apiKeys', [], (err, rows) => {
-    if (err) {
-      console.error('Error retrieving API keys:', err.message);
-      res.status(500).json({ error: 'Error listing API keys' });
-    } else {
-      res.json(rows);
-    }
-  });
-});
-
-// Route for removing an API key
-app.delete('/removekey', (req, res) => {
-  const apiKey = req.body.apikey;
-  db.run('DELETE FROM apiKeys WHERE key = ?', [apiKey], function(err) {
-    if (err) {
-      console.error('Error removing API key:', err.message);
-      res.status(500).json({ error: 'Error removing API key' });
-    } else {
-      res.json({ message: 'API key removed' });
-    }
-  });
-});
 
 // Route for making a request to the Ollama API
 app.post('/generate', (req, res) => {
