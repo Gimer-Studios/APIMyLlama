@@ -81,17 +81,19 @@ const rl = readline.createInterface({
   output: process.stdout
 });
 
-rl.question('Enter the port number: ', (port) => {
-  fs.writeFile('port.conf', port, (err) => {
-    if (err) {
-      console.error('Error saving port number:', err.message);
-    } else {
-      console.log(`Port number saved to port.conf: ${port}`);
-      app.listen(port, () => console.log(`Server running on port ${port}`));
-      startCLI();
-    }
+setTimeout(() => {
+  rl.question('Enter the port number: ', (port) => {
+    fs.writeFile('port.conf', port, (err) => {
+      if (err) {
+        console.error('Error saving port number:', err.message);
+      } else {
+        console.log(`Port number saved to port.conf: ${port}`);
+        app.listen(port, () => console.log(`Server running on port ${port}`));
+        startCLI();
+      }
+    });
   });
-});
+}, 1000);
 
 function startCLI() {
   rl.on('line', (input) => {
@@ -123,6 +125,16 @@ function startCLI() {
             console.error('Error removing API key:', err.message);
           } else {
             console.log('API key removed');
+          }
+        });
+        break;
+      case 'addkey':
+        console.log('Warning: Adding your own keys may be unsafe. It is recommended to generate keys using the generatekey command.');
+        db.run('INSERT INTO apiKeys(key) VALUES(?)', [argument], (err) => {
+          if (err) {
+            console.error('Error adding API key:', err.message);
+          } else {
+            console.log(`API key added: ${argument}`);
           }
         });
         break;
