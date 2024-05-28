@@ -104,23 +104,24 @@ apiMyLlamaNodePackage.generate(apiKey, prompt, model, ip, port, stream)
 
 Python example:
 ```bash
-from ApiMyLlama import ApiMyLlama
+import requests
+from apimyllama import ApiMyLlama
 
-# Initialize ApiMyLlama with server IP and port
-api = ApiMyLlama(ip='SERVER_IP', port='SERVER_PORT')
+def main():
+    ip = "SERVER_IP"
+    port = PORT_NUMBER
+    apikey = "API_KEY" 
+    prompt = "Hello"
+    model = "llama3" 
+    api = ApiMyLlama(ip, port)
+    try:
+        result = api.generate(apikey, prompt, model)
+        print("API Response:", result)
+    except requests.RequestException as e:
+        print("An error occurred:", e)
 
-# Example usage
-apiKey = 'API_KEY'
-prompt = 'Hello!'
-model = 'llama3'
-stream = False
-
-try:
-    response = api.generate(apiKey, prompt, model, stream)
-    print("Response from Ollama API:")
-    print(response)
-except Exception as e:
-    print("Error:", e)
+if __name__ == "__main__":
+    main()
 ```
 ## API References
 ```
