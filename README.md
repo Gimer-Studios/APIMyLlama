@@ -155,7 +155,7 @@ If you get this error just close the Ollama app through the system tray on Windo
 
 #### 4. error: 'Error making request to Ollama API'
 
-If you have a custom port set for your Ollama server this is a simple fix. Just run the 'changeollamaport <YOUR_OLLAMA_SERVER_PORT>' and change it to the port your Ollama server is running on.
+If you have a custom port set for your Ollama server this is a simple fix. Just run the 'changeollamaport <YOUR_OLLAMA_SERVER_PORT>' and change it to the port your Ollama server is running on. By default it is 11434 but if you changed it you will need to do this. You can also fix this problem through changing the port in the ollamaPort.conf file.
 
 ## Authors
 
