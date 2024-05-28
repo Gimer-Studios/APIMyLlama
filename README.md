@@ -31,7 +31,7 @@ node APIMyLlama.js
 ```
 After cloning go into the cloned directory and installing all the needed dependencies by running the 'npm install' command. Then run the APIMyLlama.js file.
 On startup it will ask what port you want to use.
-```bash
+```
 PS C:\Users\EXAMPLE\Documents\APIMyLlama> node APIMyLlama.js
 Connected to the apiKeys.db database.
 Enter the port number: <ENTER_PORT>
