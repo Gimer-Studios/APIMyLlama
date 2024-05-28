@@ -29,8 +29,30 @@ let db = new sqlite3.Database('./apiKeys.db', sqlite3.OPEN_READWRITE | sqlite3.O
   }
 });
 
+// Function to get Ollama server port from config file
+function getOllamaPort() {
+  return new Promise((resolve, reject) => {
+    if (fs.existsSync('ollamaPort.conf')) {
+      fs.readFile('ollamaPort.conf', 'utf8', (err, data) => {
+        if (err) {
+          reject('Error reading Ollama port from file:', err.message);
+        } else {
+          const port = parseInt(data.trim());
+          if (isNaN(port)) {
+            reject('Invalid Ollama port number in ollamaPort.conf');
+          } else {
+            resolve(port);
+          }
+        }
+      });
+    } else {
+      reject('Ollama port configuration file not found');
+    }
+  });
+}
+
 // Route for making a request to the Ollama API
-app.post('/generate', (req, res) => {
+app.post('/generate', async (req, res) => {
   const { apikey, prompt, model, stream, images, raw } = req.body;
 
   // Log the received request body for debugging
@@ -41,7 +63,7 @@ app.post('/generate', (req, res) => {
   }
 
   // Check if the API key exists in the database
-  db.get('SELECT key FROM apiKeys WHERE key = ?', [apikey], (err, row) => {
+  db.get('SELECT key FROM apiKeys WHERE key = ?', [apikey], async (err, row) => {
     if (err) {
       console.error('Error checking API key:', err.message);
       return res.status(500).json({ error: 'Internal server error' });
@@ -51,13 +73,21 @@ app.post('/generate', (req, res) => {
       return res.status(403).json({ error: 'Invalid API Key' });
     }
 
-    // Make request to Ollama if key is valid.
-    axios.post('http://localhost:11434/api/generate', { model, prompt, stream, images, raw })
-      .then(response => res.json(response.data))
-      .catch(error => {
-        console.error('Error making request to Ollama API:', error.message);
-        res.status(500).json({ error: 'Error making request to Ollama API' });
-      });
+    try {
+      const ollamaPort = await getOllamaPort();
+      const OLLAMA_API_URL = `http://localhost:${ollamaPort}/api/generate`;
+
+      // Make request to Ollama if key is valid.
+      axios.post(OLLAMA_API_URL, { model, prompt, stream, images, raw })
+        .then(response => res.json(response.data))
+        .catch(error => {
+          console.error('Error making request to Ollama API:', error.message);
+          res.status(500).json({ error: 'Error making request to Ollama API' });
+        });
+    } catch (error) {
+      console.error(error);
+      res.status(500).json({ error: 'Error retrieving Ollama server port' });
+    }
   });
 });
 
@@ -66,7 +96,7 @@ let currentPort;
 
 function startServer(port) {
   currentPort = port;
-  server = app.listen(port, () => console.log(`Server running on port ${port}`));
+  server = app.listen(currentPort, () => console.log(`Server running on port ${currentPort}`));
 }
 
 // Close the database connection when the application is closed
@@ -88,13 +118,27 @@ const rl = readline.createInterface({
 });
 
 function askForPort() {
-  rl.question('Enter the port number: ', (port) => {
+  rl.question('Enter the port number for the server: ', (port) => {
     fs.writeFile('port.conf', port, (err) => {
       if (err) {
         console.error('Error saving port number:', err.message);
       } else {
         console.log(`Port number saved to port.conf: ${port}`);
-        startServer(port);
+        currentPort = parseInt(port); 
+        askForOllamaPort();
+      }
+    });
+  });
+}
+
+function askForOllamaPort() {
+  rl.question('Enter the port number for the Ollama server (Port that your Ollama server is running on. By default it is 11434 so if you didnt change anything it should be that.): ', (port) => {
+    fs.writeFile('ollamaPort.conf', port, (err) => {
+      if (err) {
+        console.error('Error saving Ollama port number:', err.message);
+      } else {
+        console.log(`Ollama port number saved to ollamaPort.conf: ${port}`);
+        startServer(currentPort);
         startCLI();
       }
     });
@@ -113,8 +157,26 @@ setTimeout(() => {
           console.error('Invalid port number in port.conf');
           askForPort();
         } else {
-          startServer(port);
-          startCLI();
+          currentPort = port; 
+          if (fs.existsSync('ollamaPort.conf')) {
+            fs.readFile('ollamaPort.conf', 'utf8', (err, data) => {
+              if (err) {
+                console.error('Error reading Ollama port number from file:', err.message);
+                askForOllamaPort();
+              } else {
+                const ollamaPort = parseInt(data.trim());
+                if (isNaN(ollamaPort)) {
+                  console.error('Invalid Ollama port number in ollamaPort.conf');
+                  askForOllamaPort();
+                } else {
+                  startServer(currentPort); 
+                  startCLI();
+                }
+              }
+            });
+          } else {
+            askForOllamaPort();
+          }
         }
       }
     });
@@ -183,6 +245,20 @@ function startCLI() {
                   startServer(newPort);
                 }
               });
+            }
+          });
+        }
+        break;
+      case 'changeollamaport':
+        if (!argument || isNaN(argument)) {
+          console.log('Invalid Ollama port number');
+        } else {
+          const newOllamaPort = parseInt(argument);
+          fs.writeFile('ollamaPort.conf', newOllamaPort.toString(), (err) => {
+            if (err) {
+              console.error('Error saving Ollama port number:', err.message);
+            } else {
+              console.log(`Ollama port number saved to ollamaPort.conf: ${newOllamaPort}`);
             }
           });
         }
