@@ -36,7 +36,7 @@ PS C:\Users\EXAMPLE\Documents\APIMyLlama> node APIMyLlama.js
 Connected to the apiKeys.db database.
 Enter the port number: <ENTER_PORT>
 ```
-Enter the desired port you would like to use with the API. After you choose your port you will NEED to port foward this port if you are gonna use the API Key system OUTSIDE of your network.
+Enter the desired port you would like to use with the API. This port can NOT be the same as Ollama or any other application running on your server. After you choose your port you will NEED to port foward this port if you are gonna use the API Key system OUTSIDE of your network.
 
 ## Commands
 These are the commands you can use in the APIMyLlama application
