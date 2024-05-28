@@ -1,4 +1,3 @@
-
 # APIMyLlama Documentation
 
 ## Overview
@@ -27,9 +26,10 @@ Install [Node.JS](https://nodejs.org/en/download/package-manager) on your server
 ```bash
 git clone https://github.com/Gimer-Studios/APIMyLlama.git
 cd APIMyLlama
+npm install
 node APIMyLlama.js
 ```
-After cloning go into the cloned directory and run the APIMyLlama.js file.
+After cloning go into the cloned directory and installing all the needed dependencies by running the 'npm install' command. Then run the APIMyLlama.js file.
 On startup it will ask what port you want to use.
 ```bash
 PS C:\Users\EXAMPLE\Documents\APIMyLlama> node APIMyLlama.js
@@ -60,6 +60,16 @@ This command will remove any key from the database.
 addkey <KEY>
 ```
 You can add custom keys if wanted. (DO with CAUTION as it may be unsafe)
+
+```bash
+changeport <SERVER_PORT>
+```
+You can change the servers port in realtime without having to restart the application.
+
+```bash
+changeollamaport <YOUR_OLLAMA_SERVER_PORT>
+```
+You can change the Ollama Server port if you have a custom one set. By default it is 11434.
 
 ## Working with the API
 Install APIMyLlama packages with NPM or PIP
@@ -129,6 +139,23 @@ stream: Boolean indicating whether to stream the response.
 If there are any issues please make a Github Issue Report. To get quicker support join our discord server.
 -[Discord Server](https://discord.gg/r6XazGtKg7) If there are any feature requests you may request them in the discord server. PLEASE NOTE this project is still in EARLY BETA. 
 
+## FAQ
+
+#### 1. Why am I getting the module not found error?
+
+You most likely forgot to run the 'npm install' command after cloning the repository.
+
+#### 2. Why can't I use the API outside my network?
+
+You probably didn't port foward. And if you did your router may have not intialized the changes yet or applied them.
+
+#### 3. Ollama Serve command error "Error: listen tcp 127.0.0.1:11434: bind: Only one usage of each socket address (protocol/network address/port) is normally permitted."
+
+If you get this error just close the Ollama app through the system tray on Windows. And if your on Linux just use systemctl to stop the Ollama process. Once done you can try running the ollama serve command again.
+
+#### 4. error: 'Error making request to Ollama API'
+
+If you have a custom port set for your Ollama server this is a simple fix. Just run the 'changeollamaport <YOUR_OLLAMA_SERVER_PORT>' and change it to the port your Ollama server is running on.
 
 ## Authors
 
