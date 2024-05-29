@@ -110,7 +110,7 @@ from apimyllama import ApiMyLlama
 
 def main():
     ip = "SERVER_IP"
-    port = PORT_NUMBER
+    port = "PORT_NUMBER"
     apikey = "API_KEY" 
     prompt = "Hello"
     model = "llama3" 
