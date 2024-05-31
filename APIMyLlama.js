@@ -20,10 +20,30 @@ let db = new sqlite3.Database('./apiKeys.db', sqlite3.OPEN_READWRITE | sqlite3.O
   } else {
     console.log('Connected to the apiKeys.db database.');
     db.run(`CREATE TABLE IF NOT EXISTS apiKeys (
-      key TEXT PRIMARY KEY
+      key TEXT PRIMARY KEY,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      usage_count INTEGER DEFAULT 0,
+      last_used TIMESTAMP
     )`, (err) => {
       if (err) {
-        console.error('Error creating table:', err.message);
+        console.error('Error creating apiKeys table:', err.message);
+      }
+    });
+    db.run(`CREATE TABLE IF NOT EXISTS apiUsage (
+      key TEXT,
+      timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      request_count INTEGER DEFAULT 1
+    )`, (err) => {
+      if (err) {
+        console.error('Error creating apiUsage table:', err.message);
+      }
+    });
+    db.run(`CREATE TABLE IF NOT EXISTS webhooks (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      url TEXT NOT NULL
+    )`, (err) => {
+      if (err) {
+        console.error('Error creating webhooks table:', err.message);
       }
     });
   }
@@ -47,6 +67,29 @@ function getOllamaPort() {
       });
     } else {
       reject('Ollama port configuration file not found');
+    }
+  });
+}
+
+// Function to send a notification to all webhooks
+function sendWebhookNotification(payload) {
+  db.all('SELECT url FROM webhooks', [], (err, rows) => {
+    if (err) {
+      console.error('Error retrieving webhooks:', err.message);
+    } else {
+      rows.forEach(row => {
+        const webhookPayload = {
+          content: JSON.stringify(payload, null, 2) // Convert the payload to a pretty-printed JSON string
+        };
+
+        axios.post(row.url, webhookPayload)
+          .then(response => {
+            console.log('Webhook notification sent successfully:', response.data);
+          })
+          .catch(error => {
+            console.error('Error sending webhook notification:', error.message);
+          });
+      });
     }
   });
 }
@@ -79,7 +122,22 @@ app.post('/generate', async (req, res) => {
 
       // Make request to Ollama if key is valid.
       axios.post(OLLAMA_API_URL, { model, prompt, stream, images, raw })
-        .then(response => res.json(response.data))
+        .then(response => {
+          // Update usage count and last used timestamp
+          db.run('UPDATE apiKeys SET usage_count = usage_count + 1, last_used = CURRENT_TIMESTAMP WHERE key = ?', [apikey], (err) => {
+            if (err) console.error('Error updating usage count:', err.message);
+          });
+
+          // Log usage in apiUsage table
+          db.run('INSERT INTO apiUsage (key) VALUES (?)', [apikey], (err) => {
+            if (err) console.error('Error logging API usage:', err.message);
+          });
+
+          // Send webhook notifications
+          sendWebhookNotification({ apikey, prompt, model, stream, images, raw, timestamp: new Date() });
+
+          res.json(response.data);
+        })
         .catch(error => {
           console.error('Error making request to Ollama API:', error.message);
           res.status(500).json({ error: 'Error making request to Ollama API' });
@@ -144,46 +202,6 @@ function askForOllamaPort() {
     });
   });
 }
-
-setTimeout(() => {
-  if (fs.existsSync('port.conf')) {
-    fs.readFile('port.conf', 'utf8', (err, data) => {
-      if (err) {
-        console.error('Error reading port number from file:', err.message);
-        askForPort();
-      } else {
-        const port = parseInt(data.trim());
-        if (isNaN(port)) {
-          console.error('Invalid port number in port.conf');
-          askForPort();
-        } else {
-          currentPort = port; 
-          if (fs.existsSync('ollamaPort.conf')) {
-            fs.readFile('ollamaPort.conf', 'utf8', (err, data) => {
-              if (err) {
-                console.error('Error reading Ollama port number from file:', err.message);
-                askForOllamaPort();
-              } else {
-                const ollamaPort = parseInt(data.trim());
-                if (isNaN(ollamaPort)) {
-                  console.error('Invalid Ollama port number in ollamaPort.conf');
-                  askForOllamaPort();
-                } else {
-                  startServer(currentPort); 
-                  startCLI();
-                }
-              }
-            });
-          } else {
-            askForOllamaPort();
-          }
-        }
-      }
-    });
-  } else {
-    askForPort();
-  }
-}, 1000);
 
 function startCLI() {
   rl.on('line', (input) => {
@@ -253,18 +271,96 @@ function startCLI() {
         if (!argument || isNaN(argument)) {
           console.log('Invalid Ollama port number');
         } else {
-          const newOllamaPort = parseInt(argument);
-          fs.writeFile('ollamaPort.conf', newOllamaPort.toString(), (err) => {
+          const newPort = parseInt(argument);
+          fs.writeFile('ollamaPort.conf', newPort.toString(), (err) => {
             if (err) {
               console.error('Error saving Ollama port number:', err.message);
             } else {
-              console.log(`Ollama port number saved to ollamaPort.conf: ${newOllamaPort}`);
+              console.log(`Ollama port number saved to ollamaPort.conf: ${newPort}`);
             }
           });
         }
+        break;
+      case 'addwebhook':
+        if (!argument) {
+          console.log('Webhook URL is required');
+        } else {
+          db.run('INSERT INTO webhooks (url) VALUES (?)', [argument], (err) => {
+            if (err) {
+              console.error('Error adding webhook:', err.message);
+            } else {
+              console.log(`Webhook added: ${argument}`);
+            }
+          });
+        }
+        break;
+      case 'deletewebhook':
+        if (!argument) {
+          console.log('Webhook ID is required');
+        } else {
+          db.run('DELETE FROM webhooks WHERE id = ?', [argument], (err) => {
+            if (err) {
+              console.error('Error deleting webhook:', err.message);
+            } else {
+              console.log('Webhook deleted');
+            }
+          });
+        }
+        break;
+      case 'listwebhooks':
+        db.all('SELECT id, url FROM webhooks', [], (err, rows) => {
+          if (err) {
+            console.error('Error listing webhooks:', err.message);
+          } else {
+            console.log('Webhooks:', rows);
+          }
+        });
+        break;
+      case 'exit':
+        rl.close();
         break;
       default:
         console.log('Unknown command');
     }
   });
 }
+
+setTimeout(() => {
+  if (fs.existsSync('port.conf')) {
+    fs.readFile('port.conf', 'utf8', (err, data) => {
+      if (err) {
+        console.error('Error reading port number from file:', err.message);
+        askForPort();
+      } else {
+        const port = parseInt(data.trim());
+        if (isNaN(port)) {
+          console.error('Invalid port number in port.conf');
+          askForPort();
+        } else {
+          currentPort = port; 
+          if (fs.existsSync('ollamaPort.conf')) {
+            fs.readFile('ollamaPort.conf', 'utf8', (err, data) => {
+              if (err) {
+                console.error('Error reading Ollama port number from file:', err.message);
+                askForOllamaPort();
+              } else {
+                const ollamaPort = parseInt(data.trim());
+                if (isNaN(ollamaPort)) {
+                  console.error('Invalid Ollama port number in ollamaPort.conf');
+                  askForOllamaPort();
+                } else {
+                  startServer(currentPort); 
+                  startCLI();
+                }
+              }
+            });
+          } else {
+            askForOllamaPort();
+          }
+        }
+      }
+    });
+  } else {
+    askForPort();
+  }
+}, 1000);
