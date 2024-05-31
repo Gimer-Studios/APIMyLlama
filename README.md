@@ -72,6 +72,21 @@ changeollamaport <YOUR_OLLAMA_SERVER_PORT>
 ```
 You can change the Ollama Server port if you have a custom one set. By default it is 11434.
 
+```bash
+addwebhook <YOUR_WEBHOOK>
+```
+You can add webhooks for alerts when a new request is made. EX. Discord Webhook
+
+```bash
+listwebhooks
+```
+This command will list all the webhooks you have attachted to your system.
+
+```bash
+deletewebhook <ID_OF_WEBHOOK_IN_DATABASE>
+```
+This command can be used to remove a webhook in your system. You can get the ID of the webhook using the listwebhooks command.
+
 ## Working with the API
 Install APIMyLlama packages with NPM or PIP
 
