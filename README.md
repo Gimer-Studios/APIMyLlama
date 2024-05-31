@@ -85,7 +85,7 @@ This command will list all the webhooks you have attachted to your system.
 ```bash
 deletewebhook <ID_OF_WEBHOOK_IN_DATABASE>
 ```
-This command can be used to remove a webhook in your system. You can get the ID of the webhook using the listwebhooks command.
+This command can be used to remove a webhook in your system. You can get the ID of the webhook using the 'listwebhooks' command.
 
 ## Working with the API
 Install APIMyLlama packages with NPM or PIP
