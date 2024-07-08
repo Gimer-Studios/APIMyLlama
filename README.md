@@ -88,7 +88,7 @@ You can add webhooks for alerts when a new request is made. EX. Discord Webhook
 ```bash
 listwebhooks
 ```
-This command will list all the webhooks you have attachted to your system.
+This command will list all the webhooks you have attached to your system.
 
 ```bash
 deletewebhook <ID_OF_WEBHOOK_IN_DATABASE>
