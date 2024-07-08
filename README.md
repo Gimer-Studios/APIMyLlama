@@ -42,7 +42,7 @@ On startup it will ask what port you want to use.
 ```
 PS C:\Users\EXAMPLE\Documents\APIMyLlama> node APIMyLlama.js
 Connected to the apiKeys.db database.
-Enter the port number: <ENTER_PORT>
+Enter the port number for the API server: <ENTER_PORT>
 Enter the port number for the Ollama server (Port that your Ollama server is running on. By default it is 11434 so if you didnt change anything it should be that.): <PORT_FOR_OLLAMA_SERVER
 ```
 Enter the desired port you would like to use with the API. This port can NOT be the same as Ollama or any other application running on your server. After you choose your port you will NEED to port foward this port if you are gonna use the API Key system OUTSIDE of your network. Then it will ask you to enter the port for your Ollama server. This is the port Ollama is running on. By default Ollama uses port 11434.
