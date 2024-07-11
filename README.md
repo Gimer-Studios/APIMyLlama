@@ -37,7 +37,7 @@ cd APIMyLlama
 npm install
 node APIMyLlama.js
 ```
-After cloning go into the cloned directory and installing all the needed dependencies by running the 'npm install' command. Then run the APIMyLlama.js file.
+After cloning go into the APIMyLlama directory and install all the needed dependencies by running the 'npm install' command. Then run the APIMyLlama.js file.
 On startup it will ask what port you want to use.
 ```
 PS C:\Users\EXAMPLE\Documents\APIMyLlama> node APIMyLlama.js
