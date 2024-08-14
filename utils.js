@@ -420,6 +420,7 @@ function getOllamaURL() {
         if (err) {
           reject('Error reading Ollama url from file:', err.message);
         } else {
+          console.log('DATA:', data);
           const URL = data.trim();
           if (isNaN(URL)) {
             reject('Invalid Ollama url in ollamaURL.conf 2');
