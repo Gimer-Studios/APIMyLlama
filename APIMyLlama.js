@@ -46,8 +46,8 @@ setTimeout(() => {
                 askForOllamaURL(app, startServer, startCLI, port, db);
               } else {
                 const ollamaURL = data.trim();
-                if (isNaN(ollamaURL)) {
-                  console.error('Invalid Ollama url in ollamaURL.conf 1');
+                if (typeof URL === 'string' || URL instanceof String) {
+                  console.error('Invalid Ollama url in ollamaURL.conf');
                   askForOllamaURL(app, startServer, startCLI, port, db);
                 } else {
                   startServer(port, app);

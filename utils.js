@@ -422,8 +422,8 @@ function getOllamaURL() {
         } else {
           console.log('DATA:', data);
           const URL = data.trim();
-          if (isNaN(URL)) {
-            reject('Invalid Ollama url in ollamaURL.conf 2');
+          if (typeof URL === 'string' || URL instanceof String) {
+            reject('Invalid Ollama url in ollamaURL.conf');
           } else {
             resolve(URL);
           }
