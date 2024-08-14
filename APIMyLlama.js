@@ -1,6 +1,6 @@
 const express = require('express');
 const { initializeDatabase, closeDatabase, getDb } = require('./db');
-const { startServer, askForPort, askForOllamaPort, startCLI } = require('./utils');
+const { startServer, askForPort, askForOllamaURL, startCLI } = require('./utils');
 const { setupRoutes } = require('./api');
 const fs = require('fs');
 
@@ -32,23 +32,23 @@ setTimeout(() => {
     fs.readFile('port.conf', 'utf8', (err, data) => {
       if (err) {
         console.error('Error reading port number from file:', err.message);
-        askForPort(app, startServer, askForOllamaPort, startCLI, db);
+        askForPort(app, startServer, askForOllamaURL, startCLI, db);
       } else {
         const port = parseInt(data.trim());
         if (isNaN(port)) {
           console.error('Invalid port number in port.conf');
-          askForPort(app, startServer, askForOllamaPort, startCLI, db);
+          askForPort(app, startServer, askForOllamaURL, startCLI, db);
         } else {
-          if (fs.existsSync('ollamaPort.conf')) {
-            fs.readFile('ollamaPort.conf', 'utf8', (err, data) => {
+          if (fs.existsSync('ollamaURL.conf')) {
+            fs.readFile('ollamaURL.conf', 'utf8', (err, data) => {
               if (err) {
-                console.error('Error reading Ollama port number from file:', err.message);
-                askForOllamaPort(app, startServer, startCLI, port, db);
+                console.error('Error reading Ollama url from file:', err.message);
+                askForOllamaURL(app, startServer, startCLI, port, db);
               } else {
-                const ollamaPort = parseInt(data.trim());
-                if (isNaN(ollamaPort)) {
-                  console.error('Invalid Ollama port number in ollamaPort.conf');
-                  askForOllamaPort(app, startServer, startCLI, port, db);
+                const ollamaURL = data.trim();
+                if (typeof ollamaURL !== 'string' || ollamaURL === '') {
+                  console.error('Invalid Ollama url in ollamaURL.conf');
+                  askForOllamaURL(app, startServer, startCLI, port, db);
                 } else {
                   startServer(port, app);
                   startCLI(db);
@@ -56,13 +56,13 @@ setTimeout(() => {
               }
             });
           } else {
-            askForOllamaPort(app, startServer, startCLI, port, db);
+            askForOllamaURL(app, startServer, startCLI, port, db);
           }
         }
       }
     });
   } else {
-    askForPort(app, startServer, askForOllamaPort, startCLI, db);
+    askForPort(app, startServer, askForOllamaURL, startCLI, db);
   }
 }, 1000);
 

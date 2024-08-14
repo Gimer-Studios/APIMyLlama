@@ -1,4 +1,4 @@
-const { getOllamaPort, sendWebhookNotification } = require('./utils');
+const { getOllamaURL, sendWebhookNotification } = require('./utils');
 const axios = require('axios');
 
 const rateLimits = new Map();
@@ -101,8 +101,8 @@ async function generateResponse(req, res, db) {
     }
 
     try {
-      const ollamaPort = await getOllamaPort();
-      const OLLAMA_API_URL = `http://localhost:${ollamaPort}/api/generate`;
+      const ollamaURL = await getOllamaURL();
+      const OLLAMA_API_URL = `${ollamaURL}/api/generate`;
 
       axios.post(OLLAMA_API_URL, { model, prompt, stream, images, raw })
         .then(response => {

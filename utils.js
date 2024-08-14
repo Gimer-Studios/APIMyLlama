@@ -14,7 +14,7 @@ function startServer(port, app) {
   server = expressApp.listen(currentPort, () => console.log(`Server running on port ${currentPort}`));
 }
 
-function askForPort(app, startServerCallback, askForOllamaPortCallback, startCLICallback, db) {
+function askForPort(app, startServerCallback, askForOllamaURLCallback, startCLICallback, db) {
   const rl = readline.createInterface({
     input: process.stdin,
     output: process.stdout
@@ -27,25 +27,25 @@ function askForPort(app, startServerCallback, askForOllamaPortCallback, startCLI
       } else {
         console.log(`Port number saved to port.conf: ${port}`);
         currentPort = parseInt(port);
-        askForOllamaPortCallback(app, startServerCallback, startCLICallback, currentPort, db);
+        askForOllamaURLCallback(app, startServerCallback, startCLICallback, currentPort, db);
       }
     });
     rl.close();
   });
 }
 
-function askForOllamaPort(app, startServerCallback, startCLICallback, port, db) {
+function askForOllamaURL(app, startServerCallback, startCLICallback, port, db) {
   const rl = readline.createInterface({
     input: process.stdin,
     output: process.stdout
   });
 
-  rl.question('Enter the port number for the Ollama server (Port that your Ollama server is running on. By default it is 11434 so if you didnt change anything it should be that.): ', (ollamaPort) => {
-    fs.writeFile('ollamaPort.conf', ollamaPort, (err) => {
+  rl.question('Enter the URL for the Ollama server (URL that your Ollama server is running on. By default it is "http://localhost:11434" so if you didnt change anything it should be that.): ', (ollamaURL) => {
+    fs.writeFile('ollamaURL.conf', ollamaURL, (err) => {
       if (err) {
-        console.error('Error saving Ollama port number:', err.message);
+        console.error('Error saving Ollama url:', err.message);
       } else {
-        console.log(`Ollama port number saved to ollamaPort.conf: ${ollamaPort}`);
+        console.log(`Ollama url saved to ollamaURL.conf: ${ollamaURL}`);
         startServerCallback(port, app);
         startCLICallback(db);
       }
@@ -83,8 +83,8 @@ function startCLI(db) {
       case 'changeport':
         changePort(argument);
         break;
-      case 'changeollamaport':
-        changeOllamaPort(argument);
+      case 'changeollamaurl':
+        changeOllamaURL(argument);
         break;
       case 'ratelimit':
         setRateLimit(db, argument, rest[0]);
@@ -226,17 +226,17 @@ function updatePortAndRestart(port) {
   });
 }
 
-function changeOllamaPort(newPort) {
-  if (!newPort || isNaN(newPort)) {
-    console.log('Invalid Ollama port number');
+function changeOllamaURL(newURL) {
+  if (!newURL || isNaN(newURL)) {
+    console.log('Invalid Ollama url');
     return;
   }
-  const port = parseInt(newPort);
-  fs.writeFile('ollamaPort.conf', port.toString(), (err) => {
+  const URL = newURL;
+  fs.writeFile('ollamaURL.conf', URL.toString(), (err) => {
     if (err) {
-      console.error('Error saving Ollama port number:', err.message);
+      console.error('Error saving Ollama url:', err.message);
     } else {
-      console.log(`Ollama port number saved to ollamaPort.conf: ${port}`);
+      console.log(`Ollama url saved to ollamaURL.conf: ${URL}`);
     }
   });
 }
@@ -413,23 +413,23 @@ function listActiveKeys(db) {
   });
 }
 
-function getOllamaPort() {
+function getOllamaURL() {
   return new Promise((resolve, reject) => {
-    if (fs.existsSync('ollamaPort.conf')) {
-      fs.readFile('ollamaPort.conf', 'utf8', (err, data) => {
+    if (fs.existsSync('ollamaURL.conf')) {
+      fs.readFile('ollamaURL.conf', 'utf8', (err, data) => {
         if (err) {
-          reject('Error reading Ollama port from file:', err.message);
+          reject('Error reading Ollama url from file:', err.message);
         } else {
-          const port = parseInt(data.trim());
-          if (isNaN(port)) {
-            reject('Invalid Ollama port number in ollamaPort.conf');
+          const ollamaURL = data.trim();
+          if (typeof ollamaURL !== 'string' || ollamaURL === '') {
+            reject('Invalid Ollama url in ollamaURL.conf');
           } else {
-            resolve(port);
+            resolve(ollamaURL);
           }
         }
       });
     } else {
-      reject('Ollama port configuration file not found');
+      reject('Ollama url configuration file not found');
     }
   });
 }
@@ -459,9 +459,9 @@ function sendWebhookNotification(db, payload) {
 module.exports = {
   startServer,
   askForPort,
-  askForOllamaPort,
+  askForOllamaURL,
   startCLI,
-  getOllamaPort,
+  getOllamaURL,
   sendWebhookNotification,
   updatePortAndRestart
 };
