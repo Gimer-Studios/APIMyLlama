@@ -76,9 +76,9 @@ changeport <SERVER_PORT>
 You can change the servers port in realtime without having to restart the application.
 
 ```bash
-changeollamaport <YOUR_OLLAMA_SERVER_PORT>
+changeollamaurl <YOUR_OLLAMA_SERVER_URL>
 ```
-You can change the Ollama Server port if you have a custom one set. By default it is 11434.
+You can change the Ollama Server url if you have a custom one set. By default it is "http://localhost:11434".
 
 ```bash
 addwebhook <YOUR_WEBHOOK>
@@ -441,7 +441,7 @@ If you get this error just close the Ollama app through the system tray on Windo
 
 #### 4. error: 'Error making request to Ollama API'
 
-If you have a custom port set for your Ollama server this is a simple fix. Just run the 'changeollamaport <YOUR_OLLAMA_SERVER_PORT>' and change it to the port your Ollama server is running on. By default it is 11434 but if you changed it you will need to do this. You can also fix this problem through changing the port in the ollamaPort.conf file.
+If you have a custom port set for your Ollama server this is a simple fix. Just run the 'changeollamaurl <YOUR_OLLAMA_SERVER_URL>' and change it to the url your Ollama server is running on. By default it is "http://localhost:11434" but if you changed it you will need to do this. You can also fix this problem through changing the port in the ollamaURL.conf file.
 
 ## Authors
 
