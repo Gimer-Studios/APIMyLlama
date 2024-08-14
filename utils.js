@@ -226,17 +226,17 @@ function updatePortAndRestart(port) {
   });
 }
 
-function changeOllamaURL(newPort) {
-  if (!newPort || isNaN(newPort)) {
-    console.log('Invalid Ollama port number');
+function changeOllamaURL(newURL) {
+  if (!newURL || isNaN(newURL)) {
+    console.log('Invalid Ollama url');
     return;
   }
-  const port = parseInt(newPort);
-  fs.writeFile('ollamaURL.conf', port.toString(), (err) => {
+  const URL = newURL;
+  fs.writeFile('ollamaURL.conf', URL.toString(), (err) => {
     if (err) {
-      console.error('Error saving Ollama port number:', err.message);
+      console.error('Error saving Ollama url:', err.message);
     } else {
-      console.log(`Ollama port number saved to ollamaURL.conf: ${port}`);
+      console.log(`Ollama url saved to ollamaURL.conf: ${URL}`);
     }
   });
 }
@@ -418,18 +418,18 @@ function getOllamaURL() {
     if (fs.existsSync('ollamaURL.conf')) {
       fs.readFile('ollamaURL.conf', 'utf8', (err, data) => {
         if (err) {
-          reject('Error reading Ollama port from file:', err.message);
+          reject('Error reading Ollama url from file:', err.message);
         } else {
-          const port = parseInt(data.trim());
-          if (isNaN(port)) {
-            reject('Invalid Ollama port number in ollamaURL.conf');
+          const URL = data.trim();
+          if (isNaN(URL)) {
+            reject('Invalid Ollama url in ollamaURL.conf');
           } else {
-            resolve(port);
+            resolve(URL);
           }
         }
       });
     } else {
-      reject('Ollama port configuration file not found');
+      reject('Ollama url configuration file not found');
     }
   });
 }

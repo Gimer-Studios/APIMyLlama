@@ -42,12 +42,12 @@ setTimeout(() => {
           if (fs.existsSync('ollamaURL.conf')) {
             fs.readFile('ollamaURL.conf', 'utf8', (err, data) => {
               if (err) {
-                console.error('Error reading Ollama port number from file:', err.message);
+                console.error('Error reading Ollama url from file:', err.message);
                 askForOllamaURL(app, startServer, startCLI, port, db);
               } else {
-                const ollamaURL = parseInt(data.trim());
+                const ollamaURL = data.trim();
                 if (isNaN(ollamaURL)) {
-                  console.error('Invalid Ollama port number in ollamaURL.conf');
+                  console.error('Invalid Ollama url in ollamaURL.conf');
                   askForOllamaURL(app, startServer, startCLI, port, db);
                 } else {
                   startServer(port, app);
