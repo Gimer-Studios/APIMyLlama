@@ -421,11 +421,11 @@ function getOllamaURL() {
           reject('Error reading Ollama url from file:', err.message);
         } else {
           console.log('DATA:', data);
-          const URL = data.trim();
-          if (typeof URL === 'string' || URL instanceof String) {
+          const ollamaURL = data.trim();
+          if (typeof ollamaURL !== 'string' || ollamaURL === '') {
             reject('Invalid Ollama url in ollamaURL.conf');
           } else {
-            resolve(URL);
+            resolve(ollamaURL);
           }
         }
       });
