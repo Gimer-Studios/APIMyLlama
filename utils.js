@@ -422,7 +422,7 @@ function getOllamaURL() {
         } else {
           const URL = data.trim();
           if (isNaN(URL)) {
-            reject('Invalid Ollama url in ollamaURL.conf');
+            reject('Invalid Ollama url in ollamaURL.conf 2');
           } else {
             resolve(URL);
           }
