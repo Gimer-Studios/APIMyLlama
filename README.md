@@ -51,13 +51,13 @@ Enter the desired port you would like to use with the APIMyLlama server. This po
 
 ## Let Ollama Listen on all interfaces (Only applies if you are using 2 different systems for the APIMyLlama server and Ollama.)
 
-Windows:
+### Windows:
 For Windows you can set a System Environment Variable. The variable and the value are listed below.
 ```
 Variable: OLLAMA_HOST
 Value: 0.0.0.0
 ```
-Linux:
+### Linux:
 For Linux you can edit the service file for Ollama. Open /etc/systemd/system/ollama.service and add the following line inside the [Service] section
 ```
 Environment="OLLAMA_HOST=0.0.0.0"
@@ -65,6 +65,12 @@ Environment="OLLAMA_HOST=0.0.0.0"
 On Linux you can also just run the command below to listen on all interfaces if that is easier for you. However you will need to run Ollama with this command everytime you start it up if you want to use APIMyLlama.
 ```
 OLLAMA_HOST=0.0.0.0 ollama serve
+```
+
+### MacOS:
+For MacOS, you can export the enviroment variable like so:
+```
+echo “export OLLAMA_HOST = 0.0.0.0” >> ~/.zshenv
 ```
 
 ## Commands
