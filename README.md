@@ -213,7 +213,7 @@ Jitpack+Gradle Dependency <build.gradle> (Java IF YOUR USING GRADLE)
 ```
 
 Jitpack+Maven Repository <pom.xml> (Java IF YOUR USING MAVEN)
-```bash
+```xml
 	<repositories>
 		<repository>
 		    <id>jitpack.io</id>
@@ -223,7 +223,7 @@ Jitpack+Maven Repository <pom.xml> (Java IF YOUR USING MAVEN)
 ```
 
 Jitpack+Maven Dependency <pom.xml> (Java IF YOUR USING MAVEN)
-```bash
+```xml
 	<dependency>
 	    <groupId>com.github.Gimer-Studios</groupId>
 	    <artifactId>APIMyLlama-Java-Package</artifactId>
@@ -231,7 +231,7 @@ Jitpack+Maven Dependency <pom.xml> (Java IF YOUR USING MAVEN)
 	</dependency>
 ```
 Crate Repository <Cargo.toml> (Rust)
-```bash
+```toml
     [dependencies]
     apimyllama = "2.0.7"
     tokio = { version = "1", features = ["full"] }
@@ -240,7 +240,7 @@ Crate Repository <Cargo.toml> (Rust)
 # Examples to get response from API
 
 Node.JS example:
-```bash
+```javascript
 const apiMyLlamaNodePackage = require('apimyllama-node-package');
 
 // Intialize Parameters
@@ -257,7 +257,7 @@ apiMyLlamaNodePackage.generate(apikey, prompt, model, ip, port, stream)
   ```
 
 Python example:
-```bash
+```python
 import requests
 from apimyllama import ApiMyLlama
 
@@ -279,7 +279,7 @@ if __name__ == "__main__":
 ```
 
 Java Example:
-```bash
+```java
 import com.gimerstudios.apimyllama.ApiMyLlama;
 import java.io.IOException;
 
@@ -306,7 +306,7 @@ public class TestAPIMyLlama {
 ```
 
 Rust Example:
-```bash
+```rust
 use apimyllama::ApiMyLlama;
 use std::error::Error;
 
@@ -345,7 +345,7 @@ The packages have built in health checking command (AS OF V2)
 If you already have the Node.js or Python packages installed then you can just copy and paste the code below to test.
 
 Node.JS example:
-```bash
+```javascript
 const apiMyLlamaNodePackage = require('apimyllama-node-package');
 
 // Intialize Parameters
@@ -360,7 +360,7 @@ apiMyLlamaNodePackage.getHealth(apikey, ip, port)
   ```
 
   Python example:
-```bash
+```python
 import requests
 from apimyllama import ApiMyLlama
 
@@ -378,7 +378,7 @@ except requests.RequestException as error:
 ```
 
   Java example:
-```bash
+```java
 import com.gimerstudios.apimyllama.ApiMyLlama;
 import java.io.IOException;
 import java.util.Map;
@@ -403,7 +403,7 @@ public class TestAPIMyLlama {
 ```
 
 Rust Example:
-```bash
+```rust
 use apimyllama::ApiMyLlama;
 use std::error::Error;
 
