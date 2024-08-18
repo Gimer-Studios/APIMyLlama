@@ -457,7 +457,7 @@ We now have a [Ko-fi](https://ko-fi.com/gimerstudios) open if you would like to 
 
 #### 1. Why am I getting the module not found error?
 
-You most likely forgot to run the 'npm install' command after cloning the repository.
+You most likely forgot to run the `npm install` command after cloning the repository.
 
 #### 2. Why can't I use the API outside my network?
 
