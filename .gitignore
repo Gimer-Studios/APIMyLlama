@@ -1,0 +1,6 @@
+# Config files
+*.conf
+# DB
+*.db
+# Packages
+node_modules/

@@ -47,6 +47,12 @@ Enter the port number for the API server: 3000
 Port number saved to port.conf: 3000
 Enter the URL for the Ollama server (URL that your Ollama server is running on. By default it is "http://localhost:11434" so if you didnt change anything it should be that.): <URL_FOR_OLLAMA_SERVER
 ```
+
+You can define port and ollama server by ENV make easier integration in docker
+```bash
+# API_PORT=3000 OLLAMA_URL=http://localhost:11434 node APIMyLlama.js
+```
+
 Enter the desired port you would like to use with the APIMyLlama server. This port can NOT be the same as Ollama or any other application running on your server. After you choose your port you will NEED to port foward this port if you are gonna use the API Key system OUTSIDE of your network. Then it will ask you to enter the URL for your Ollama server. This is the URL Ollama is running on. If you are running APIMyLlama on the same system as you are running Ollama on. You will put 'http://localhost:11434' If you changed the port you can put your port instead of '11434'. If you are running Ollama on a different server/device (This also applies to virtualized machines). You will need to get the IP of the device and then put it like this 'http://<YOUR_SERVER_IP>:11434'. If you changed the port then you can put your port here instead of '11434'. This last thing applies to running Ollama and APIMyLlama on 2 different systems. If you are doing this. You will NEED to run Ollama to listen on ALL interfaces. You can do this on Windows or Linux like shown below.
 
 ## Let Ollama Listen on all interfaces (Only applies if you are using 2 different systems for the APIMyLlama server and Ollama.)
@@ -434,6 +440,15 @@ prompt: Text prompt to generate a response.
 model: Machine learning model to use for text generation.
 stream: Boolean indicating whether to stream the response.
 ```
+```
+api.embeddings(apiKey, prompt, model)
+api.get_health(apikey)
+apiKey: API key for accessing the Ollama API.
+prompt: Text prompt to generate a response.
+model: Machine learning model to use for text generation.
+stream: Boolean indicating whether to stream the response.
+```
+
 # Support
 If there are any issues please make a Github Issue Report. To get quicker support join our discord server.
 -[Discord Server](https://discord.gg/r6XazGtKg7) If there are any feature requests you may request them in the discord server. PLEASE NOTE this project is still in EARLY BETA. 
