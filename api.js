@@ -7,6 +7,7 @@ function setupRoutes(app, db) {
   app.use((req, res, next) => rateLimitMiddleware(req, res, next, db));
   app.get('/health', (req, res) => healthCheck(req, res, db));
   app.post('/generate', (req, res) => generateResponse(req, res, db));
+  app.post('/embeddings', (req, res) => embeddingsResponse(req, res, db));
 }
 
 function rateLimitMiddleware(req, res, next, db) {
@@ -78,6 +79,50 @@ function healthCheck(req, res, db) {
     }
 
     res.json({ status: 'API is healthy', timestamp: new Date() });
+  });
+}
+
+async function embeddingsResponse(req, res, db) {
+  const { apikey, prompt, model, stream, images, raw } = req.body;
+
+  console.log('Request body:', req.body);
+
+  if (!apikey) {
+    return res.status(400).json({ error: 'API key is required' });
+  }
+
+  db.get('SELECT key FROM apiKeys WHERE key = ?', [apikey], async (err, row) => {
+    if (err) {
+      console.error('Error checking API key:', err.message);
+      return res.status(500).json({ error: 'Internal server error' });
+    }
+    if (!row) {
+      console.log('Invalid API key:', apikey);
+      return res.status(403).json({ error: 'Invalid API Key' });
+    }
+
+    try {
+      const ollamaURL = await getOllamaURL();
+      const OLLAMA_API_URL = `${ollamaURL}/api/embeddings`;
+
+      axios.post(OLLAMA_API_URL, { model, prompt})
+        .then(response => {
+          db.run('INSERT INTO apiUsage (key) VALUES (?)', [apikey], (err) => {
+            if (err) console.error('Error logging API usage:', err.message);
+          });
+
+          sendWebhookNotification(db, { apikey, prompt, model, stream, images, raw, timestamp: new Date() });
+
+          res.json(response.data);
+        })
+        .catch(error => {
+          console.error('Error making request to Ollama API:', error.message);
+          res.status(500).json({ error: 'Error making request to Ollama API' });
+        });
+    } catch (error) {
+      console.error(error);
+      res.status(500).json({ error: 'Error retrieving Ollama server port' });
+    }
   });
 }
 

@@ -1,4 +1,5 @@
 const fs = require('fs');
+const readlineSync = require('readline-sync');
 const readline = require('readline');
 const crypto = require('crypto');
 const axios = require('axios');
@@ -8,52 +9,100 @@ let server;
 let currentPort;
 let expressApp;
 
-function startServer(port, app) {
-  currentPort = port;
+function isValidPort(value) {
+  const port = parseInt(value, 10);
+  return Number.isInteger(port) && port > 0 && port <= 65535;
+}
+
+function isValidURL(url) {
+  try {
+      new URL(url);
+      return true;
+  } catch (e) {
+      return false;
+  }
+}
+
+function startServer(app) {
+  currentPort = getPort();
   expressApp = app;  // Store the app object
   server = expressApp.listen(currentPort, () => console.log(`Server running on port ${currentPort}`));
 }
 
-function askForPort(app, startServerCallback, askForOllamaURLCallback, startCLICallback, db) {
-  const rl = readline.createInterface({
-    input: process.stdin,
-    output: process.stdout
-  });
-
-  rl.question('Enter the port number for the API server: ', (port) => {
-    fs.writeFile('port.conf', port, (err) => {
-      if (err) {
-        console.error('Error saving port number:', err.message);
+function askForPort(defaultPort = 3000) {
+  let port;
+  while (true) {
+      port = readlineSync.question(`Enter the port number for the API server [${defaultPort}] : `);
+      console.log('');
+      if (port === '') {
+          port = defaultPort;
+          break;
+      }
+      if (isValidPort(port)) {
+          break;
       } else {
-        console.log(`Port number saved to port.conf: ${port}`);
-        currentPort = parseInt(port);
-        askForOllamaURLCallback(app, startServerCallback, startCLICallback, currentPort, db);
+          console.log('Invalid port. Please enter a valid port number.');
+      }
+  }
+  process.env.API_PORT = port.toString()
+  return parseInt(port, 10);
+}
+
+function changePort(newPort) {
+  let port
+  if (isValidPort(newPort)) {
+    port = parseInt(newPort, 10);
+  }else{
+    console.log('Invalid port number');
+    port = parseInt(askForPort(),10)
+  }
+  if (server) {
+    server.close((err) => {
+      if (err) {
+        console.error('Error closing the server:', err.message);
+      } else {
+        console.log(`Server closed on port ${currentPort}`);
+        updatePortAndRestart(port);
       }
     });
-    rl.close();
+  }
+}
+
+function updatePortAndRestart(port) {
+  fs.writeFile('port.conf', port.toString(), (err) => {
+    if (err) {
+      console.error('Error saving port number:', err.message);
+    } else {
+      console.log(`Port number saved to port.conf: ${port}`);
+      if (expressApp) {
+        startServer(expressApp);
+      } else {
+        console.error('Express app not available. Unable to restart server.');
+      }
+    }
   });
 }
 
-function askForOllamaURL(app, startServerCallback, startCLICallback, port, db) {
-  const rl = readline.createInterface({
-    input: process.stdin,
-    output: process.stdout
-  });
 
-  rl.question('Enter the URL for the Ollama server (URL that your Ollama server is running on. By default it is "http://localhost:11434" so if you didnt change anything it should be that.): ', (ollamaURL) => {
-    fs.writeFile('ollamaURL.conf', ollamaURL, (err) => {
-      if (err) {
-        console.error('Error saving Ollama url:', err.message);
-      } else {
-        console.log(`Ollama url saved to ollamaURL.conf: ${ollamaURL}`);
-        startServerCallback(port, app);
-        startCLICallback(db);
+
+function askForOllamaURL(defaultUrl = 'http://localhost:11434') {
+  let url;
+  while (true) {
+      url = readlineSync.question(`Enter the Ollama server URL [${defaultUrl}] : `);
+      console.log('');
+      if (url === '') {
+          url = defaultUrl;
+          break;
       }
-    });
-    rl.close();
-  });
+      if (isValidUrl(url)) {
+          break;
+      } else {
+          console.log('Invalid URL. Please enter a valid URL.');
+      }
+  }
+  changeOllamaURL(url)
+  return url;
 }
-
 function startCLI(db) {
   const rl = readline.createInterface({
     input: process.stdin,
@@ -191,52 +240,18 @@ function addKey(db, key) {
   });
 }
 
-function changePort(newPort) {
-  if (!newPort || isNaN(newPort)) {
-    console.log('Invalid port number');
-    return;
-  }
-  const port = parseInt(newPort);
-  if (server) {
-    server.close((err) => {
-      if (err) {
-        console.error('Error closing the server:', err.message);
-      } else {
-        console.log(`Server closed on port ${currentPort}`);
-        updatePortAndRestart(port);
-      }
-    });
-  } else {
-    updatePortAndRestart(port);
-  }
-}
-
-function updatePortAndRestart(port) {
-  fs.writeFile('port.conf', port.toString(), (err) => {
-    if (err) {
-      console.error('Error saving port number:', err.message);
-    } else {
-      console.log(`Port number saved to port.conf: ${port}`);
-      if (expressApp) {
-        startServer(port, expressApp);
-      } else {
-        console.error('Express app not available. Unable to restart server.');
-      }
-    }
-  });
-}
-
 function changeOllamaURL(newURL) {
-  if (!newURL || isNaN(newURL)) {
+  if (!isValidURL(newURL)) {
     console.log('Invalid Ollama url');
+    askForOllamaURL()
     return;
   }
-  const URL = newURL;
-  fs.writeFile('ollamaURL.conf', URL.toString(), (err) => {
+  process.env.OLLAMA_URL = newURL
+  fs.writeFile('ollamaURL.conf', newURL, (err) => {
     if (err) {
       console.error('Error saving Ollama url:', err.message);
     } else {
-      console.log(`Ollama url saved to ollamaURL.conf: ${URL}`);
+      console.log(`Ollama url saved to ollamaURL.conf: ${newURL}`);
     }
   });
 }
@@ -413,25 +428,40 @@ function listActiveKeys(db) {
   });
 }
 
-function getOllamaURL() {
-  return new Promise((resolve, reject) => {
-    if (fs.existsSync('ollamaURL.conf')) {
-      fs.readFile('ollamaURL.conf', 'utf8', (err, data) => {
-        if (err) {
-          reject('Error reading Ollama url from file:', err.message);
-        } else {
-          const ollamaURL = data.trim();
-          if (typeof ollamaURL !== 'string' || ollamaURL === '') {
-            reject('Invalid Ollama url in ollamaURL.conf');
-          } else {
-            resolve(ollamaURL);
-          }
-        }
-      });
-    } else {
-      reject('Ollama url configuration file not found');
+function getPort() {
+  let port = process.env.API_PORT ? process.env.API_PORT.trim() : null;
+  if (!port) {
+    let data
+    try {
+      data = fs.readFileSync('port.conf', 'utf8');
+    } catch {}
+    if (data) {
+      port = parseInt(data.trim());
     }
-  });
+  }
+  if (!isValidPort(port)) {
+    console.error('Invalid port number in $API_PORT or port.conf');
+    port = askForPort();
+  }
+  return parseInt(port, 10);
+}
+
+function getOllamaURL() {
+  let ollamaURL = process.env.OLLAMA_URL ? process.env.OLLAMA_URL.trim() : null;
+  if (!ollamaURL) {
+    let data
+    try {
+      data = fs.readFileSync('ollamaURL.conf', 'utf8');
+    } catch {}
+    if (data) {
+      ollamaURL = parseInt(data.trim());
+    }
+  }
+  if (!isValidURL(ollamaURL)) {
+    console.error('Invalid Ollama url in OLLAMA_URL or ollamaURL.conf');
+    ollamaURL = askForOllamaURL();
+  }
+  return ollamaURL
 }
 
 function sendWebhookNotification(db, payload) {
@@ -458,9 +488,8 @@ function sendWebhookNotification(db, payload) {
 
 module.exports = {
   startServer,
-  askForPort,
-  askForOllamaURL,
   startCLI,
+  getPort,
   getOllamaURL,
   sendWebhookNotification,
   updatePortAndRestart

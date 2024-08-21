@@ -1,6 +1,6 @@
 const express = require('express');
-const { initializeDatabase, closeDatabase, getDb } = require('./db');
-const { startServer, askForPort, askForOllamaURL, startCLI } = require('./utils');
+const { initializeDatabase, closeDatabase} = require('./db');
+const { startServer, startCLI, getPort, getOllamaURL } = require('./utils');
 const { setupRoutes } = require('./api');
 const fs = require('fs');
 
@@ -26,44 +26,12 @@ process.on('SIGINT', () => {
   closeDatabase();
 });
 
+//Verif conf
+getPort()
+getOllamaURL()
+
 // Start the server
-setTimeout(() => {
-  if (fs.existsSync('port.conf')) {
-    fs.readFile('port.conf', 'utf8', (err, data) => {
-      if (err) {
-        console.error('Error reading port number from file:', err.message);
-        askForPort(app, startServer, askForOllamaURL, startCLI, db);
-      } else {
-        const port = parseInt(data.trim());
-        if (isNaN(port)) {
-          console.error('Invalid port number in port.conf');
-          askForPort(app, startServer, askForOllamaURL, startCLI, db);
-        } else {
-          if (fs.existsSync('ollamaURL.conf')) {
-            fs.readFile('ollamaURL.conf', 'utf8', (err, data) => {
-              if (err) {
-                console.error('Error reading Ollama url from file:', err.message);
-                askForOllamaURL(app, startServer, startCLI, port, db);
-              } else {
-                const ollamaURL = data.trim();
-                if (typeof ollamaURL !== 'string' || ollamaURL === '') {
-                  console.error('Invalid Ollama url in ollamaURL.conf');
-                  askForOllamaURL(app, startServer, startCLI, port, db);
-                } else {
-                  startServer(port, app);
-                  startCLI(db);
-                }
-              }
-            });
-          } else {
-            askForOllamaURL(app, startServer, startCLI, port, db);
-          }
-        }
-      }
-    });
-  } else {
-    askForPort(app, startServer, askForOllamaURL, startCLI, db);
-  }
-}, 1000);
+startServer(app);
+startCLI(db);
 
 module.exports = app;
