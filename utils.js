@@ -227,16 +227,17 @@ function updatePortAndRestart(port) {
 }
 
 function changeOllamaURL(newURL) {
-  if (!newURL || isNaN(newURL)) {
-    console.log('Invalid Ollama url');
+  const urlPattern = /^(http|https):\/\/[^\s$.?#].[^\s]*$/gm;
+  if (!newURL || !urlPattern.test(newURL)) {
+    console.log('Invalid Ollama URL');
     return;
   }
   const URL = newURL;
-  fs.writeFile('ollamaURL.conf', URL.toString(), (err) => {
+  fs.writeFile('ollamaURL.conf', URL, (err) => {
     if (err) {
-      console.error('Error saving Ollama url:', err.message);
+      console.error('Error saving Ollama URL:', err.message);
     } else {
-      console.log(`Ollama url saved to ollamaURL.conf: ${URL}`);
+      console.log(`Ollama URL saved to ollamaURL.conf: ${URL}`);
     }
   });
 }
