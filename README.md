@@ -45,19 +45,21 @@ APIMyLlama V2 is being started. Thanks for choosing Gimer Studios.
 Connected to the apiKeys.db database.
 Enter the port number for the API server: 3000
 Port number saved to port.conf: 3000
-Enter the URL for the Ollama server (URL that your Ollama server is running on. By default it is "http://localhost:11434" so if you didnt change anything it should be that.): <URL_FOR_OLLAMA_SERVER
+Enter the URL for the Ollama server (URL that your Ollama server is running on. By default it is "http://localhost:11434" so if you didnt change anything it should be that.): <URL_FOR_OLLAMA_SERVER>
 ```
-Enter the desired port you would like to use with the APIMyLlama server. This port can NOT be the same as Ollama or any other application running on your server. After you choose your port you will NEED to port foward this port if you are gonna use the API Key system OUTSIDE of your network. Then it will ask you to enter the URL for your Ollama server. This is the URL Ollama is running on. If you are running APIMyLlama on the same system as you are running Ollama on. You will put 'http://localhost:11434' If you changed the port you can put your port instead of '11434'. If you are running Ollama on a different server/device (This also applies to virtualized machines). You will need to get the IP of the device and then put it like this 'http://<YOUR_SERVER_IP>:11434'. If you changed the port then you can put your port here instead of '11434'. This last thing applies to running Ollama and APIMyLlama on 2 different systems. If you are doing this. You will NEED to run Ollama to listen on ALL interfaces. You can do this on Windows or Linux like shown below.
+Enter the desired port you would like to use with the APIMyLlama server. This port can NOT be the same as Ollama or any other application running on your server. After you choose your port you will NEED to port foward this port if you are gonna use the API Key system OUTSIDE of your network. Then it will ask you to enter the URL for your Ollama server. This is the URL Ollama is running on. If you are running APIMyLlama on the same system as you are running Ollama on. You will put 'http://localhost:11434` If you changed the port you can put your port instead of '11434'. If you are running Ollama on a different server/device (This also applies to virtualized machines). You will need to get the IP of the device and then put it like this `http://<YOUR_SERVER_IP>:11434'. If you changed the port then you can put your port here instead of '11434'. This last thing applies to running Ollama and APIMyLlama on 2 different systems. If you are doing this. You will NEED to run Ollama to listen on ALL interfaces. You can do this on Windows or Linux like shown below.
 
-## Let Ollama Listen on all interfaces (Only applies if you are using 2 different systems for the APIMyLlama server and Ollama.)
+## Listen on all interfaces
+> [!NOTE]
+> This only applies if you are using 2 different systems for the APIMyLlama server and Ollama.
 
-Windows:
+### Windows:
 For Windows you can set a System Environment Variable. The variable and the value are listed below.
 ```
 Variable: OLLAMA_HOST
 Value: 0.0.0.0
 ```
-Linux:
+### Linux:
 For Linux you can edit the service file for Ollama. Open /etc/systemd/system/ollama.service and add the following line inside the [Service] section
 ```
 Environment="OLLAMA_HOST=0.0.0.0"
@@ -65,6 +67,12 @@ Environment="OLLAMA_HOST=0.0.0.0"
 On Linux you can also just run the command below to listen on all interfaces if that is easier for you. However you will need to run Ollama with this command everytime you start it up if you want to use APIMyLlama.
 ```
 OLLAMA_HOST=0.0.0.0 ollama serve
+```
+
+### MacOS:
+For MacOS, you can export the enviroment variable like so:
+```
+echo “export OLLAMA_HOST = 0.0.0.0” >> ~/.zshenv
 ```
 
 ## Commands
@@ -207,7 +215,7 @@ Jitpack+Gradle Dependency <build.gradle> (Java IF YOUR USING GRADLE)
 ```
 
 Jitpack+Maven Repository <pom.xml> (Java IF YOUR USING MAVEN)
-```bash
+```xml
 	<repositories>
 		<repository>
 		    <id>jitpack.io</id>
@@ -217,7 +225,7 @@ Jitpack+Maven Repository <pom.xml> (Java IF YOUR USING MAVEN)
 ```
 
 Jitpack+Maven Dependency <pom.xml> (Java IF YOUR USING MAVEN)
-```bash
+```xml
 	<dependency>
 	    <groupId>com.github.Gimer-Studios</groupId>
 	    <artifactId>APIMyLlama-Java-Package</artifactId>
@@ -225,7 +233,7 @@ Jitpack+Maven Dependency <pom.xml> (Java IF YOUR USING MAVEN)
 	</dependency>
 ```
 Crate Repository <Cargo.toml> (Rust)
-```bash
+```toml
     [dependencies]
     apimyllama = "2.0.7"
     tokio = { version = "1", features = ["full"] }
@@ -234,7 +242,7 @@ Crate Repository <Cargo.toml> (Rust)
 # Examples to get response from API
 
 Node.JS example:
-```bash
+```javascript
 const apiMyLlamaNodePackage = require('apimyllama-node-package');
 
 // Intialize Parameters
@@ -251,7 +259,7 @@ apiMyLlamaNodePackage.generate(apikey, prompt, model, ip, port, stream)
   ```
 
 Python example:
-```bash
+```python
 import requests
 from apimyllama import ApiMyLlama
 
@@ -273,7 +281,7 @@ if __name__ == "__main__":
 ```
 
 Java Example:
-```bash
+```java
 import com.gimerstudios.apimyllama.ApiMyLlama;
 import java.io.IOException;
 
@@ -300,7 +308,7 @@ public class TestAPIMyLlama {
 ```
 
 Rust Example:
-```bash
+```rust
 use apimyllama::ApiMyLlama;
 use std::error::Error;
 
@@ -339,7 +347,7 @@ The packages have built in health checking command (AS OF V2)
 If you already have the Node.js or Python packages installed then you can just copy and paste the code below to test.
 
 Node.JS example:
-```bash
+```javascript
 const apiMyLlamaNodePackage = require('apimyllama-node-package');
 
 // Intialize Parameters
@@ -354,7 +362,7 @@ apiMyLlamaNodePackage.getHealth(apikey, ip, port)
   ```
 
   Python example:
-```bash
+```python
 import requests
 from apimyllama import ApiMyLlama
 
@@ -372,7 +380,7 @@ except requests.RequestException as error:
 ```
 
   Java example:
-```bash
+```java
 import com.gimerstudios.apimyllama.ApiMyLlama;
 import java.io.IOException;
 import java.util.Map;
@@ -397,7 +405,7 @@ public class TestAPIMyLlama {
 ```
 
 Rust Example:
-```bash
+```rust
 use apimyllama::ApiMyLlama;
 use std::error::Error;
 
@@ -449,7 +457,7 @@ We now have a [Ko-fi](https://ko-fi.com/gimerstudios) open if you would like to 
 
 #### 1. Why am I getting the module not found error?
 
-You most likely forgot to run the 'npm install' command after cloning the repository.
+You most likely forgot to run the `npm install` command after cloning the repository.
 
 #### 2. Why can't I use the API outside my network?
 
@@ -461,7 +469,7 @@ If you get this error just close the Ollama app through the system tray on Windo
 
 #### 4. error: 'Error making request to Ollama API'
 
-If you have a custom port set for your Ollama server this is a simple fix. Just run the 'changeollamaurl <YOUR_OLLAMA_SERVER_URL>' and change it to the url your Ollama server is running on. By default it is "http://localhost:11434" but if you changed it you will need to do this. You can also fix this problem through changing the port in the ollamaURL.conf file.
+If you have a custom port set for your Ollama server this is a simple fix. Just run `changeollamaurl <YOUR_OLLAMA_SERVER_URL>` and change it to the url your Ollama server is running on. By default it is "http://localhost:11434" but if you changed it you will need to do this. You can also fix this problem through changing the port in the ollamaURL.conf file.
 
 ## Authors
 
