@@ -82,7 +82,7 @@ function healthCheck(req, res, db) {
 }
 
 async function generateResponse(req, res, db) {
-  const { apikey, prompt, model, stream, images, raw } = req.body;
+  const { apikey, prompt, model, stream = true, images, raw } = req.body;
 
   console.log('Request body:', req.body);
 
@@ -90,6 +90,7 @@ async function generateResponse(req, res, db) {
     return res.status(400).json({ error: 'API key is required' });
   }
 
+  // Check if the API key exists in the database
   db.get('SELECT key FROM apiKeys WHERE key = ?', [apikey], async (err, row) => {
     if (err) {
       console.error('Error checking API key:', err.message);
@@ -102,25 +103,56 @@ async function generateResponse(req, res, db) {
 
     try {
       const ollamaURL = await getOllamaURL();
+      if (!ollamaURL) {
+        throw new Error('Unable to get Ollama URL');
+      }
       const OLLAMA_API_URL = `${ollamaURL}/api/generate`;
 
-      axios.post(OLLAMA_API_URL, { model, prompt, stream, images, raw })
-        .then(response => {
-          db.run('INSERT INTO apiUsage (key) VALUES (?)', [apikey], (err) => {
-            if (err) console.error('Error logging API usage:', err.message);
-          });
+      // Set proper headers for streaming
+      if (stream) {
+        res.setHeader('Content-Type', 'application/x-ndjson');
+      }
 
-          sendWebhookNotification(db, { apikey, prompt, model, stream, images, raw, timestamp: new Date() });
+      // Make request to Ollama with streaming
+      const ollamaResponse = await axios.post(OLLAMA_API_URL, 
+        { model, prompt, stream, images, raw },
+        { responseType: stream ? 'stream' : 'json' }
+      );
 
-          res.json(response.data);
-        })
-        .catch(error => {
-          console.error('Error making request to Ollama API:', error.message);
-          res.status(500).json({ error: 'Error making request to Ollama API' });
+      // Log usage before sending response
+      db.run('INSERT INTO apiUsage (key) VALUES (?)', [apikey], (err) => {
+        if (err) console.error('Error logging API usage:', err.message);
+      });
+
+      // Send webhook notification
+      sendWebhookNotification(db, { 
+        apikey, prompt, model, stream, images, raw, 
+        timestamp: new Date() 
+      });
+
+      // Handle streaming response
+      if (stream) {
+        ollamaResponse.data.pipe(res);
+        // Handle errors in the stream
+        ollamaResponse.data.on('error', (error) => {
+          console.error('Stream error:', error);
+          res.status(500).json({ error: 'Stream error occurred' });
         });
+      } else {
+        res.json(ollamaResponse.data);
+      }
+
     } catch (error) {
-      console.error(error);
-      res.status(500).json({ error: 'Error retrieving Ollama server port' });
+      console.error('Error:', error.message);
+      if (error.message.includes('Unable to get Ollama URL')) {
+        res.status(500).json({ error: 'Error retrieving Ollama server URL' });
+      } else if (error.response) {
+        res.status(error.response.status).json({ error: `Ollama API error: ${error.response.data}` });
+      } else if (error.request) {
+        res.status(500).json({ error: 'No response received from Ollama API' });
+      } else {
+        res.status(500).json({ error: 'Error making request to Ollama API' });
+      }
     }
   });
 }
