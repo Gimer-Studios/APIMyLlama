@@ -16,18 +16,19 @@ We now have a [Ko-fi](https://ko-fi.com/gimerstudios) open if you would like to 
 
 ## Ollama Setup
 If you already have Ollama setup with the 'ollama serve' command and your desired model. You can skip this. If not i'll show you how to set it up. First install [Ollama](https://ollama.com/download) for your desired operating system. Once installed open a terminal instance and run the command below.
+
 ```bash
 ollama pull llama3
 ```
 
 If done correctly you should now have the Meta's Llama3 LLM installed. You can use any model with the API but for this example we will use this model. Now you are gonna run this command after the install is complete.
+
 ```bash
 ollama serve
 ```
 Now you have an Ollama server setup. Time for the next step.
 
 ## Hosting the API
-
 
 Install [Node.JS](https://nodejs.org/en/download/package-manager) on your server. Then clone the git repository.
 
@@ -37,9 +38,11 @@ cd APIMyLlama
 npm install
 node APIMyLlama.js
 ```
+
 After cloning go into the APIMyLlama directory and install all the needed dependencies by running the 'npm install' command. Then run the APIMyLlama.js file.
 On startup it will ask what port you want to use.
-```
+
+```powershell
 PS C:\Users\EXAMPLE\Documents\APIMyLlama> node APIMyLlama.js
 APIMyLlama V2 is being started. Thanks for choosing Gimer Studios.
 Connected to the apiKeys.db database.
@@ -47,149 +50,94 @@ Enter the port number for the API server: 3000
 Port number saved to port.conf: 3000
 Enter the URL for the Ollama server (URL that your Ollama server is running on. By default it is "http://localhost:11434" so if you didnt change anything it should be that.): <URL_FOR_OLLAMA_SERVER
 ```
-Enter the desired port you would like to use with the APIMyLlama server. This port can NOT be the same as Ollama or any other application running on your server. After you choose your port you will NEED to port foward this port if you are gonna use the API Key system OUTSIDE of your network. Then it will ask you to enter the URL for your Ollama server. This is the URL Ollama is running on. If you are running APIMyLlama on the same system as you are running Ollama on. You will put 'http://localhost:11434' If you changed the port you can put your port instead of '11434'. If you are running Ollama on a different server/device (This also applies to virtualized machines). You will need to get the IP of the device and then put it like this 'http://<YOUR_SERVER_IP>:11434'. If you changed the port then you can put your port here instead of '11434'. This last thing applies to running Ollama and APIMyLlama on 2 different systems. If you are doing this. You will NEED to run Ollama to listen on ALL interfaces. You can do this on Windows or Linux like shown below.
+Enter the desired port you would like to use with the APIMyLlama server. This
+port can NOT be the same as Ollama or any other application running on your
+server. After you choose your port you will NEED to port foward this port if
+you are gonna use the API Key system OUTSIDE of your network. Then it will
+ask you to enter the URL for your Ollama server. This is the URL Ollama is
+running on. If you are running APIMyLlama on the same system as you are
+running Ollama on. You will put `http://localhost:11434` If you changed
+the port you can put your port instead of `11434`. If you are running
+Ollama on a different server/device (This also applies to virtualized
+machines). You will need to get the IP of the device and then put it
+like this `http://<YOUR_SERVER_IP>:11434`. If you changed the port
+then you can put your port here instead of `11434`. This last thing
+applies to running Ollama and APIMyLlama on 2 different systems.
+If you are doing this. You will NEED to run Ollama to listen on
+ALL interfaces. You can do this on Windows or Linux like shown below.
 
 ## Let Ollama Listen on all interfaces (Only applies if you are using 2 different systems for the APIMyLlama server and Ollama.)
 
 Windows:
 For Windows you can set a System Environment Variable. The variable and the value are listed below.
-```
+
+```powershell
 Variable: OLLAMA_HOST
 Value: 0.0.0.0
 ```
+
 Linux:
 For Linux you can edit the service file for Ollama. Open /etc/systemd/system/ollama.service and add the following line inside the [Service] section
+
 ```
 Environment="OLLAMA_HOST=0.0.0.0"
 ```
+
 On Linux you can also just run the command below to listen on all interfaces if that is easier for you. However you will need to run Ollama with this command everytime you start it up if you want to use APIMyLlama.
-```
+
+```bash
 OLLAMA_HOST=0.0.0.0 ollama serve
 ```
 
 ## Commands
 These are the commands you can use in the APIMyLlama application
 
-```bash
-generatekey
-```
-This command will generate a key using Cryptography and save it to the local database.
-
-```bash
-listkey
-```
-This command will list all API Keys in the database.
-
-```bash
-removekey <API_KEY>
-```
-This command will remove any key from the database.
-
-```bash
-addkey <API_KEY>
-```
-You can add custom keys if wanted. (DO with CAUTION as it may be unsafe)
-
-```bash
-changeport <SERVER_PORT>
-```
-You can change the servers port in realtime without having to restart the application.
-
-```bash
-changeollamaurl <YOUR_OLLAMA_SERVER_URL>
-```
-You can change the Ollama Server url if you have a custom one set. By default it is "http://localhost:11434".
-
-```bash
-addwebhook <YOUR_WEBHOOK>
-```
-You can add webhooks for alerts when a new request is made. EX. Discord Webhook
-
-```bash
-listwebhooks
-```
-This command will list all the webhooks you have attached to your system.
-
-```bash
-deletewebhook <ID_OF_WEBHOOK_IN_DATABASE>
-```
-This command can be used to remove a webhook in your system. You can get the ID of the webhook using the 'listwebhooks' command.
-
-```bash
-ratelimit <API_KEY> <RATE_LIMIT>
-```
-This command allows you to change the ratelimit on a key. By default it is 10. The rate limit is by minute. So for example the default allows 10 requests to the API per minute.
-
-```bash
-deactivatekey <API_KEY>
-```
-Allows you to deactivate an API key. This will make the key useless untill it is activated.
-
-```bash
-activatekey <API_KEY>
-```
-Activates a API key that has been deactivated in the past.
-
-```bash
-addkeydescription <API_KEY>
-```
-This command lets you add a description to a key to help you decipher what key does what.
-
-```bash
-listkeydescription <API_KEY>
-```
-This command lists the description of that key if it has a description.
-
-```bash
-generatekeys <number>
-```
-Quickly generate multiple new API keys.
-
-```bash
-regeneratekey <API_KEY>
-```
-Regenerate any specified API key without affecting other details.
-
-```bash
-activateallkeys
-```
-Activate all your API keys with a single command.
-
-```bash
-deactivateallkeys
-```
-Deactivate all your API keys with a single command.
-
-```bash
-getkeyinfo <API_KEY>
-```
-Retrieve detailed information about a specific API key.
-
-```bash
-listactivekeys
-```
-Easily list all active API keys.
-
-```bash
-listinactivekeys
-```
-Easily list all inactive API keys.
+| Command | Notes |
+| ---------- | ------- |
+| `generatekey` | This command will generate a key using Cryptography and save it to the local database.|
+| `listkey` |  This command will list all API Keys in the database. |
+| `removekey <API_KEY>` |  This command will remove any key from the database. |
+| `addkey <API_KEY>` |  You can add custom keys if wanted. (DO with CAUTION as it may be unsafe) |
+| `changeport <SERVER_PORT>` |  You can change the servers port in realtime without having to restart the application. |
+| `changeollamaurl <YOUR_OLLAMA_SERVER_URL>` |  You can change the Ollama Server url if you have a custom one set. By default it is "http://localhost:11434". |
+| `addwebhook <YOUR_WEBHOOK>` |  You can add webhooks for alerts when a new request is made. EX. Discord Webhook |
+| `listwebhooks` |  This command will list all the webhooks you have attached to your system. |
+| `deletewebhook <ID_OF_WEBHOOK_IN_DATABASE>` |  This command can be used to remove a webhook in your system. You can get the ID of the webhook using the 'listwebhooks' command. |
+| `ratelimit <API_KEY> <RATE_LIMIT>` |  This command allows you to change the ratelimit on a key. By default it is 10. The rate limit is by minute. So for example the default allows 10 requests to the API per minute. |
+| `deactivatekey <API_KEY>` |  Allows you to deactivate an API key. This will make the key useless untill it is activated. |
+| `activatekey <API_KEY>` |  Activates a API key that has been deactivated in the past. |
+| `addkeydescription <API_KEY>` |  This command lets you add a description to a key to help you decipher what key does what. |
+| `listkeydescription <API_KEY>` |  This command lists the description of that key if it has a description. |
+| `generatekeys <number>` |  Quickly generate multiple new API keys. |
+| `regeneratekey <API_KEY>` |  Regenerate any specified API key without affecting other details. |
+| `activateallkeys` |  Activate all your API keys with a single command. |
+| `deactivateallkeys` |  Deactivate all your API keys with a single command. |
+| `getkeyinfo <API_KEY>` |  Retrieve detailed information about a specific API key. |
+| `listactivekeys` |  Easily list all active API keys. |
+| `listinactivekeys` |  Easily list all inactive API keys. |
 
 ## Working with the API
 Install APIMyLlama packages with NPM (Node.JS), PIP (Python), Jitpack Repo+Gradle or Maven (Java), or from the Crates Repository (Rust)
 
-NPM Install (Node.JS)
+### NPM Install (Node.JS)
+
 ```bash
-  cd PROJECT_NAME
-  npm install apimyllama-node-package
+cd PROJECT_NAME
+npm install apimyllama-node-package
 ```
-PIP Install (Python)
+
+### PIP Install (Python)
+
 ```bash
-  cd PROJECT_NAME
-  pip install apimyllama
+cd PROJECT_NAME
+pip install apimyllama
 ```
+
+### Java
+
 Jitpack+Gradle Repository <build.gradle> (Java IF YOUR USING GRADLE)
-```bash
+
+```java
 	dependencyResolutionManagement {
 		repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
 		repositories {
@@ -200,14 +148,16 @@ Jitpack+Gradle Repository <build.gradle> (Java IF YOUR USING GRADLE)
 ```
 
 Jitpack+Gradle Dependency <build.gradle> (Java IF YOUR USING GRADLE)
-```bash
+
+```java
 	dependencies {
 	        implementation 'com.github.Gimer-Studios:APIMyLlama-Java-Package:V2.0.5'
 	}
 ```
 
 Jitpack+Maven Repository <pom.xml> (Java IF YOUR USING MAVEN)
-```bash
+
+```java
 	<repositories>
 		<repository>
 		    <id>jitpack.io</id>
@@ -217,13 +167,17 @@ Jitpack+Maven Repository <pom.xml> (Java IF YOUR USING MAVEN)
 ```
 
 Jitpack+Maven Dependency <pom.xml> (Java IF YOUR USING MAVEN)
-```bash
+
+```java
 	<dependency>
 	    <groupId>com.github.Gimer-Studios</groupId>
 	    <artifactId>APIMyLlama-Java-Package</artifactId>
 	    <version>V2.0.5</version>
 	</dependency>
 ```
+
+### Rust
+
 Crate Repository <Cargo.toml> (Rust)
 ```bash
     [dependencies]
@@ -231,10 +185,11 @@ Crate Repository <Cargo.toml> (Rust)
     tokio = { version = "1", features = ["full"] }
 ```
 
-# Examples to get response from API
+## Examples to get response from API
 
 Node.JS example:
-```bash
+
+```javascript
 const apiMyLlamaNodePackage = require('apimyllama-node-package');
 
 // Intialize Parameters
@@ -251,16 +206,17 @@ apiMyLlamaNodePackage.generate(apikey, prompt, model, ip, port, stream)
   ```
 
 Python example:
-```bash
+
+```python
 import requests
 from apimyllama import ApiMyLlama
 
 def main():
     ip = "SERVER_IP"
     port = "PORT_NUMBER"
-    apikey = "API_KEY" 
+    apikey = "API_KEY"
     prompt = "Hello"
-    model = "llama3" 
+    model = "llama3"
     api = ApiMyLlama(ip, port)
     try:
         result = api.generate(apikey, prompt, model)
@@ -273,7 +229,8 @@ if __name__ == "__main__":
 ```
 
 Java Example:
-```bash
+
+```java
 import com.gimerstudios.apimyllama.ApiMyLlama;
 import java.io.IOException;
 
@@ -300,14 +257,15 @@ public class TestAPIMyLlama {
 ```
 
 Rust Example:
-```bash
+
+```rust
 use apimyllama::ApiMyLlama;
 use std::error::Error;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
     let server_ip = "127.0.0.1".to_string();
-    let server_port = 3000;  
+    let server_port = 3000;
     let api_key = "api";
     let api = ApiMyLlama::new(server_ip, server_port);
     let prompt = "Hello!";
@@ -339,7 +297,8 @@ The packages have built in health checking command (AS OF V2)
 If you already have the Node.js or Python packages installed then you can just copy and paste the code below to test.
 
 Node.JS example:
-```bash
+
+```javascript
 const apiMyLlamaNodePackage = require('apimyllama-node-package');
 
 // Intialize Parameters
@@ -353,8 +312,9 @@ apiMyLlamaNodePackage.getHealth(apikey, ip, port)
   .catch(error => console.error('Error:', error));
   ```
 
-  Python example:
-```bash
+Python example:
+```python
+
 import requests
 from apimyllama import ApiMyLlama
 
@@ -371,8 +331,9 @@ except requests.RequestException as error:
     print("Error:", error)
 ```
 
-  Java example:
-```bash
+Java example:
+
+```java
 import com.gimerstudios.apimyllama.ApiMyLlama;
 import java.io.IOException;
 import java.util.Map;
@@ -397,14 +358,14 @@ public class TestAPIMyLlama {
 ```
 
 Rust Example:
-```bash
+```rust
 use apimyllama::ApiMyLlama;
 use std::error::Error;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
     let server_ip = "127.0.0.1".to_string();
-    let server_port = 3000;  
+    let server_port = 3000;
     let api_key = "api";
     let api = ApiMyLlama::new(server_ip, server_port);
 
@@ -421,11 +382,13 @@ async fn main() -> Result<(), Box<dyn Error>> {
 ```
 
 ## API References
+
 ```
 ApiMyLlama(ip, port)
 ip: IP address of the APIMyLlama server.
 port: Port number on which the APIMyLlama server is running.
 ```
+
 ```
 api.generate(apiKey, prompt, model, stream)
 api.get_health(apikey)
@@ -436,14 +399,13 @@ stream: Boolean indicating whether to stream the response.
 ```
 # Support
 If there are any issues please make a Github Issue Report. To get quicker support join our discord server.
--[Discord Server](https://discord.gg/r6XazGtKg7) If there are any feature requests you may request them in the discord server. PLEASE NOTE this project is still in EARLY BETA. 
+-[Discord Server](https://discord.gg/r6XazGtKg7) If there are any feature requests you may request them in the discord server. PLEASE NOTE this project is still in EARLY BETA.
 
 ### Support Us
 
 We now have a [Ko-fi](https://ko-fi.com/gimerstudios) open if you would like to help and donate to the project. We love to keep it free and open source when possible and donating helps a lot.
 
 [Donate through Ko-fi](https://ko-fi.com/gimerstudios)
-
 
 ## FAQ
 
@@ -455,13 +417,13 @@ You most likely forgot to run the 'npm install' command after cloning the reposi
 
 You probably didn't port foward. And if you did your router may have not intialized the changes yet or applied them.
 
-#### 3. Ollama Serve command error "Error: listen tcp 127.0.0.1:11434: bind: Only one usage of each socket address (protocol/network address/port) is normally permitted."
+#### 3. Ollama Serve command error `Error: listen tcp 127.0.0.1:11434: bind: Only one usage of each socket address (protocol/network address/port) is normally permitted.`
 
 If you get this error just close the Ollama app through the system tray on Windows. And if your on Linux just use systemctl to stop the Ollama process. Once done you can try running the ollama serve command again.
 
 #### 4. error: 'Error making request to Ollama API'
 
-If you have a custom port set for your Ollama server this is a simple fix. Just run the 'changeollamaurl <YOUR_OLLAMA_SERVER_URL>' and change it to the url your Ollama server is running on. By default it is "http://localhost:11434" but if you changed it you will need to do this. You can also fix this problem through changing the port in the ollamaURL.conf file.
+If you have a custom port set for your Ollama server this is a simple fix. Just run the `changeollamaurl <YOUR_OLLAMA_SERVER_URL>` and change it to the url your Ollama server is running on. By default it is `http://localhost:11434` but if you changed it you will need to do this. You can also fix this problem through changing the port in the ollamaURL.conf file.
 
 ## Authors
 
