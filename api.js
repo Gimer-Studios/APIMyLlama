@@ -82,7 +82,7 @@ function healthCheck(req, res, db) {
 }
 
 async function generateResponse(req, res, db) {
-  const { apikey, prompt, model, stream, images, raw } = req.body;
+  const { apikey, prompt, model, stream, images, format, system, raw } = req.body;
 
   console.log('Request body:', req.body);
 
@@ -104,13 +104,13 @@ async function generateResponse(req, res, db) {
       const ollamaURL = await getOllamaURL();
       const OLLAMA_API_URL = `${ollamaURL}/api/generate`;
 
-      axios.post(OLLAMA_API_URL, { model, prompt, stream, images, raw })
+      axios.post(OLLAMA_API_URL, { model, prompt, stream, images, format, system, raw })
         .then(response => {
           db.run('INSERT INTO apiUsage (key) VALUES (?)', [apikey], (err) => {
             if (err) console.error('Error logging API usage:', err.message);
           });
 
-          sendWebhookNotification(db, { apikey, prompt, model, stream, images, raw, timestamp: new Date() });
+          sendWebhookNotification(db, { apikey, prompt, model, stream, images, format, system, raw, timestamp: new Date() });
 
           res.json(response.data);
         })
