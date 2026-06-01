@@ -119,6 +119,34 @@ async function startCLI() {
         case 'listactivekeys':
           await listActiveKeys();
           break;
+        case 'help':
+          console.log(`
+Available commands:
+  generatekey                    Generate a single API key
+  generatekeys <count>           Generate multiple API keys
+  listkey                        List all API keys
+  listactivekeys                 List active API keys
+  listinactivekeys               List inactive API keys
+  removekey <key>                Remove an API key
+  addkey <key>                   Add your own API key
+  activatekey <key>              Activate an API key
+  deactivatekey <key>            Deactivate an API key
+  activateallkeys                Activate all API keys
+  deactivateallkeys              Deactivate all API keys
+  addkeydescription <key> <desc> Add description to a key
+  listkeydescription <key>       Show description for a key
+  regeneratekey <key>            Regenerate (replace) an API key
+  getkeyinfo <key>               Show full info for a key
+  ratelimit <key> <limit>        Set rate limit for a key
+  changeport <port>              Change the server port
+  changeollamaurl <url>          Change the Ollama URL
+  addwebhook <url>               Add a webhook
+  deletewebhook <id>             Delete a webhook by ID
+  listwebhooks                   List all webhooks
+  help                           Show this help message
+  exit                           Shut down the server
+`);
+          break;
         case 'exit':
           console.log('Shutting down...');
           await db.close();
@@ -126,7 +154,7 @@ async function startCLI() {
           process.exit(0);
           break;
         default:
-          console.log('Unknown command');
+          console.log('Unknown command. Type "help" to see available commands.');
       }
     } catch (err) {
       console.error('Command error:', err.message);
