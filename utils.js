@@ -2,416 +2,334 @@ const fs = require('fs');
 const readline = require('readline');
 const crypto = require('crypto');
 const axios = require('axios');
-const { getDb } = require('./db');
+const db = require('./db');
 
 let server;
 let currentPort;
 let expressApp;
 
+const VALID_URL_PATTERN = /^https?:\/\/[^\s$.?#].[^\s]*$/i;
+
 function startServer(port, app) {
   currentPort = port;
-  expressApp = app;  // Store the app object
+  expressApp = app;
   server = expressApp.listen(currentPort, () => console.log(`Server running on port ${currentPort}`));
 }
 
-function askForPort(app, startServerCallback, askForOllamaURLCallback, startCLICallback, db) {
-  const rl = readline.createInterface({
-    input: process.stdin,
-    output: process.stdout
-  });
+async function resolveConfig(name, envVar, confFile, defaultValue) {
+  if (process.env[envVar]) {
+    console.log(`${name} set from environment variable ${envVar}`);
+    return process.env[envVar];
+  }
 
-  rl.question('Enter the port number for the API server: ', (port) => {
-    fs.writeFile('port.conf', port, (err) => {
-      if (err) {
-        console.error('Error saving port number:', err.message);
-      } else {
-        console.log(`Port number saved to port.conf: ${port}`);
-        currentPort = parseInt(port);
-        askForOllamaURLCallback(app, startServerCallback, startCLICallback, currentPort, db);
-      }
+  try {
+    const data = await fs.promises.readFile(confFile, 'utf8');
+    const value = data.trim();
+    if (value) {
+      console.log(`${name} loaded from ${confFile}: ${value}`);
+      return value;
+    }
+  } catch {}
+
+  return new Promise((resolve) => {
+    const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
+    rl.question(`Enter the ${name} (default: ${defaultValue}): `, (answer) => {
+      rl.close();
+      const value = answer.trim() || defaultValue;
+      fs.promises.writeFile(confFile, value, 'utf8')
+        .then(() => console.log(`${name} saved to ${confFile}: ${value}`))
+        .catch(err => console.error(`Error saving ${confFile}:`, err.message));
+      resolve(value);
     });
-    rl.close();
   });
 }
 
-function askForOllamaURL(app, startServerCallback, startCLICallback, port, db) {
+async function startCLI() {
   const rl = readline.createInterface({
     input: process.stdin,
     output: process.stdout
   });
 
-  rl.question('Enter the URL for the Ollama server (URL that your Ollama server is running on. By default it is "http://localhost:11434" so if you didnt change anything it should be that.): ', (ollamaURL) => {
-    fs.writeFile('ollamaURL.conf', ollamaURL, (err) => {
-      if (err) {
-        console.error('Error saving Ollama url:', err.message);
-      } else {
-        console.log(`Ollama url saved to ollamaURL.conf: ${ollamaURL}`);
-        startServerCallback(port, app);
-        startCLICallback(db);
-      }
-    });
-    rl.close();
-  });
-}
-
-function startCLI(db) {
-  const rl = readline.createInterface({
-    input: process.stdin,
-    output: process.stdout
-  });
-
-  rl.on('line', (input) => {
+  rl.on('line', async (input) => {
     const [command, argument, ...rest] = input.trim().split(' ');
     const description = rest.join(' ');
 
-    switch (command) {
-      case 'generatekey':
-        generateKey(db);
-        break;
-      case 'generatekeys':
-        generateKeys(db, argument);
-        break;
-      case 'listkey':
-        listKeys(db);
-        break;
-      case 'removekey':
-        removeKey(db, argument);
-        break;
-      case 'addkey':
-        addKey(db, argument);
-        break;
-      case 'changeport':
-        changePort(argument);
-        break;
-      case 'changeollamaurl':
-        changeOllamaURL(argument);
-        break;
-      case 'ratelimit':
-        setRateLimit(db, argument, rest[0]);
-        break;
-      case 'addwebhook':
-        addWebhook(db, argument);
-        break;
-      case 'deletewebhook':
-        deleteWebhook(db, argument);
-        break;
-      case 'listwebhooks':
-        listWebhooks(db);
-        break;
-      case 'activatekey':
-        activateKey(db, argument);
-        break;
-      case 'deactivatekey':
-        deactivateKey(db, argument);
-        break;
-      case 'addkeydescription':
-        addKeyDescription(db, argument, description);
-        break;
-      case 'listkeydescription':
-        listKeyDescription(db, argument);
-        break;
-      case 'regeneratekey':
-        regenerateKey(db, argument);
-        break;
-      case 'activateallkeys':
-        activateAllKeys(db);
-        break;
-      case 'deactivateallkeys':
-        deactivateAllKeys(db);
-        break;
-      case 'getkeyinfo':
-        getKeyInfo(db, argument);
-        break;
-      case 'listinactivekeys':
-        listInactiveKeys(db);
-        break;
-      case 'listactivekeys':
-        listActiveKeys(db);
-        break;
-      case 'exit':
-        rl.close();
-        process.exit(0);
-        break;
-      default:
-        console.log('Unknown command');
+    try {
+      switch (command) {
+        case 'generatekey':
+          await generateKey();
+          break;
+        case 'generatekeys':
+          await generateKeys(argument);
+          break;
+        case 'listkey':
+          await listKeys();
+          break;
+        case 'removekey':
+          await removeKey(argument);
+          break;
+        case 'addkey':
+          await addKey(argument);
+          break;
+        case 'changeport':
+          await changePort(argument);
+          break;
+        case 'changeollamaurl':
+          await changeOllamaURL(argument);
+          break;
+        case 'ratelimit':
+          await setRateLimit(argument, rest[0]);
+          break;
+        case 'addwebhook':
+          await addWebhook(argument);
+          break;
+        case 'deletewebhook':
+          await deleteWebhook(argument);
+          break;
+        case 'listwebhooks':
+          await listWebhooks();
+          break;
+        case 'activatekey':
+          await activateKey(argument);
+          break;
+        case 'deactivatekey':
+          await deactivateKey(argument);
+          break;
+        case 'addkeydescription':
+          await addKeyDescription(argument, description);
+          break;
+        case 'listkeydescription':
+          await listKeyDescription(argument);
+          break;
+        case 'regeneratekey':
+          await regenerateKey(argument);
+          break;
+        case 'activateallkeys':
+          await activateAllKeys();
+          break;
+        case 'deactivateallkeys':
+          await deactivateAllKeys();
+          break;
+        case 'getkeyinfo':
+          await getKeyInfo(argument);
+          break;
+        case 'listinactivekeys':
+          await listInactiveKeys();
+          break;
+        case 'listactivekeys':
+          await listActiveKeys();
+          break;
+        case 'exit':
+          console.log('Shutting down...');
+          await db.close();
+          rl.close();
+          process.exit(0);
+          break;
+        default:
+          console.log('Unknown command');
+      }
+    } catch (err) {
+      console.error('Command error:', err.message);
     }
   });
 }
 
-function generateKey(db) {
+async function generateKey() {
   const apiKey = crypto.randomBytes(20).toString('hex');
-  db.run('INSERT INTO apiKeys(key, rate_limit) VALUES(?, 10)', [apiKey], (err) => {
-    if (err) {
-      console.error('Error generating API key:', err.message);
-    } else {
-      console.log(`API key generated: ${apiKey}`);
-    }
-  });
+  await db.run('INSERT INTO apiKeys(key, rate_limit) VALUES(?, 10)', [apiKey]);
+  console.log(`API key generated: ${apiKey}`);
 }
 
-function generateKeys(db, count) {
+async function generateKeys(count) {
   if (!count || isNaN(count)) {
     console.log('Invalid number of keys');
     return;
   }
   const numberOfKeys = parseInt(count);
   for (let i = 0; i < numberOfKeys; i++) {
-    generateKey(db);
+    await generateKey();
   }
 }
 
-function listKeys(db) {
-  db.all('SELECT key, active, description FROM apiKeys', [], (err, rows) => {
-    if (err) {
-      console.error('Error listing API keys:', err.message);
-    } else {
-      console.log('API keys:', rows);
-    }
-  });
+async function listKeys() {
+  const rows = await db.all('SELECT key, active, description FROM apiKeys');
+  console.log('API keys:', rows);
 }
 
-function removeKey(db, key) {
-  db.run('DELETE FROM apiKeys WHERE key = ?', [key], (err) => {
-    if (err) {
-      console.error('Error removing API key:', err.message);
-    } else {
-      console.log('API key removed');
-    }
-  });
+async function removeKey(key) {
+  if (!key) {
+    console.log('API key is required');
+    return;
+  }
+  await db.run('DELETE FROM apiKeys WHERE key = ?', [key]);
+  console.log('API key removed');
 }
 
-function addKey(db, key) {
+async function addKey(key) {
+  if (!key) {
+    console.log('API key is required');
+    return;
+  }
   console.log('Warning: Adding your own keys may be unsafe. It is recommended to generate keys using the generatekey command.');
-  db.run('INSERT INTO apiKeys(key, rate_limit) VALUES(?, 10)', [key], (err) => {
-    if (err) {
-      console.error('Error adding API key:', err.message);
-    } else {
-      console.log(`API key added: ${key}`);
-    }
-  });
+  await db.run('INSERT INTO apiKeys(key, rate_limit) VALUES(?, 10)', [key]);
+  console.log(`API key added: ${key}`);
 }
 
-function changePort(newPort) {
+async function changePort(newPort) {
   if (!newPort || isNaN(newPort)) {
     console.log('Invalid port number');
     return;
   }
   const port = parseInt(newPort);
   if (server) {
-    server.close((err) => {
-      if (err) {
-        console.error('Error closing the server:', err.message);
-      } else {
-        console.log(`Server closed on port ${currentPort}`);
-        updatePortAndRestart(port);
-      }
+    await new Promise((resolve, reject) => {
+      server.close((err) => {
+        if (err) {
+          console.error('Error closing the server:', err.message);
+          reject(err);
+        } else {
+          console.log(`Server closed on port ${currentPort}`);
+          resolve();
+        }
+      });
     });
+  }
+  await fs.promises.writeFile('port.conf', port.toString(), 'utf8');
+  console.log(`Port number saved to port.conf: ${port}`);
+  if (expressApp) {
+    startServer(port, expressApp);
   } else {
-    updatePortAndRestart(port);
+    console.error('Express app not available. Unable to restart server.');
   }
 }
 
-function updatePortAndRestart(port) {
-  fs.writeFile('port.conf', port.toString(), (err) => {
-    if (err) {
-      console.error('Error saving port number:', err.message);
-    } else {
-      console.log(`Port number saved to port.conf: ${port}`);
-      if (expressApp) {
-        startServer(port, expressApp);
-      } else {
-        console.error('Express app not available. Unable to restart server.');
-      }
-    }
-  });
-}
-
-function changeOllamaURL(newURL) {
-  const urlPattern = /^(http|https):\/\/[^\s$.?#].[^\s]*$/gm;
-  if (!newURL || !urlPattern.test(newURL)) {
-    console.log('Invalid Ollama URL');
+async function changeOllamaURL(newURL) {
+  if (!newURL || !VALID_URL_PATTERN.test(newURL)) {
+    console.log('Invalid Ollama URL. Must be a valid http/https URL.');
     return;
   }
-  const URL = newURL;
-  fs.writeFile('ollamaURL.conf', URL, (err) => {
-    if (err) {
-      console.error('Error saving Ollama URL:', err.message);
-    } else {
-      console.log(`Ollama URL saved to ollamaURL.conf: ${URL}`);
-    }
-  });
+  await fs.promises.writeFile('ollamaURL.conf', newURL, 'utf8');
+  console.log(`Ollama URL saved to ollamaURL.conf: ${newURL}`);
 }
 
-function setRateLimit(db, key, limit) {
+async function setRateLimit(key, limit) {
   if (!key || !limit || isNaN(limit)) {
     console.log('Invalid API key or rate limit number');
     return;
   }
   const rateLimit = parseInt(limit);
-  db.run('UPDATE apiKeys SET rate_limit = ? WHERE key = ?', [rateLimit, key], (err) => {
-    if (err) {
-      console.error('Error setting rate limit:', err.message);
-    } else {
-      console.log(`Rate limit set to ${rateLimit} requests per minute for API key: ${key}`);
-    }
-  });
+  await db.run('UPDATE apiKeys SET rate_limit = ? WHERE key = ?', [rateLimit, key]);
+  console.log(`Rate limit set to ${rateLimit} requests per minute for API key: ${key}`);
 }
 
-function addWebhook(db, url) {
+async function addWebhook(url) {
   if (!url) {
     console.log('Webhook URL is required');
     return;
   }
-  db.run('INSERT INTO webhooks (url) VALUES (?)', [url], (err) => {
-    if (err) {
-      console.error('Error adding webhook:', err.message);
-    } else {
-      console.log(`Webhook added: ${url}`);
-    }
-  });
+  if (!VALID_URL_PATTERN.test(url)) {
+    console.log('Invalid webhook URL. Must be a valid http/https URL.');
+    return;
+  }
+  await db.run('INSERT INTO webhooks (url) VALUES (?)', [url]);
+  console.log(`Webhook added: ${url}`);
 }
 
-function deleteWebhook(db, id) {
+async function deleteWebhook(id) {
   if (!id) {
     console.log('Webhook ID is required');
     return;
   }
-  db.run('DELETE FROM webhooks WHERE id = ?', [id], (err) => {
-    if (err) {
-      console.error('Error deleting webhook:', err.message);
-    } else {
-      console.log('Webhook deleted');
-    }
-  });
+  await db.run('DELETE FROM webhooks WHERE id = ?', [id]);
+  console.log('Webhook deleted');
 }
 
-function listWebhooks(db) {
-  db.all('SELECT id, url FROM webhooks', [], (err, rows) => {
-    if (err) {
-      console.error('Error listing webhooks:', err.message);
-    } else {
-      console.log('Webhooks:', rows);
-    }
-  });
+async function listWebhooks() {
+  const rows = await db.all('SELECT id, url FROM webhooks');
+  console.log('Webhooks:', rows);
 }
 
-function activateKey(db, key) {
-  db.run('UPDATE apiKeys SET active = 1 WHERE key = ?', [key], (err) => {
-    if (err) {
-      console.error('Error activating API key:', err.message);
-    } else {
-      console.log(`API key ${key} activated`);
-    }
-  });
+async function activateKey(key) {
+  if (!key) {
+    console.log('API key is required');
+    return;
+  }
+  await db.run('UPDATE apiKeys SET active = 1 WHERE key = ?', [key]);
+  console.log(`API key ${key} activated`);
 }
 
-function deactivateKey(db, key) {
-  db.run('UPDATE apiKeys SET active = 0 WHERE key = ?', [key], (err) => {
-    if (err) {
-      console.error('Error deactivating API key:', err.message);
-    } else {
-      console.log(`API key ${key} deactivated`);
-    }
-  });
+async function deactivateKey(key) {
+  if (!key) {
+    console.log('API key is required');
+    return;
+  }
+  await db.run('UPDATE apiKeys SET active = 0 WHERE key = ?', [key]);
+  console.log(`API key ${key} deactivated`);
 }
 
-function addKeyDescription(db, key, description) {
+async function addKeyDescription(key, description) {
   if (!key || !description) {
     console.log('Invalid API key or description');
     return;
   }
-  db.run('UPDATE apiKeys SET description = ? WHERE key = ?', [description, key], (err) => {
-    if (err) {
-      console.error('Error adding description:', err.message);
-    } else {
-      console.log(`Description added to API key ${key}`);
-    }
-  });
+  await db.run('UPDATE apiKeys SET description = ? WHERE key = ?', [description, key]);
+  console.log(`Description added to API key ${key}`);
 }
 
-function listKeyDescription(db, key) {
+async function listKeyDescription(key) {
   if (!key) {
     console.log('Invalid API key');
     return;
   }
-  db.get('SELECT description FROM apiKeys WHERE key = ?', [key], (err, row) => {
-    if (err) {
-      console.error('Error retrieving description:', err.message);
-    } else {
-      if (row) {
-        console.log(`Description for API key ${key}: ${row.description}`);
-      } else {
-        console.log(`No description found for API key ${key}`);
-      }
-    }
-  });
+  const row = await db.get('SELECT description FROM apiKeys WHERE key = ?', [key]);
+  if (row) {
+    console.log(`Description for API key ${key}: ${row.description}`);
+  } else {
+    console.log(`No description found for API key ${key}`);
+  }
 }
 
-function regenerateKey(db, oldKey) {
+async function regenerateKey(oldKey) {
   if (!oldKey) {
     console.log('Invalid API key');
     return;
   }
   const newApiKey = crypto.randomBytes(20).toString('hex');
-  db.run('UPDATE apiKeys SET key = ? WHERE key = ?', [newApiKey, oldKey], (err) => {
-    if (err) {
-      console.error('Error regenerating API key:', err.message);
-    } else {
-      console.log(`API key regenerated. New API key: ${newApiKey}`);
-    }
-  });
+  await db.run('UPDATE apiKeys SET key = ? WHERE key = ?', [newApiKey, oldKey]);
+  console.log(`API key regenerated. New API key: ${newApiKey}`);
 }
 
-function activateAllKeys(db) {
-  db.run('UPDATE apiKeys SET active = 1', (err) => {
-    if (err) {
-      console.error('Error activating all API keys:', err.message);
-    } else {
-      console.log('All API keys activated');
-    }
-  });
+async function activateAllKeys() {
+  await db.run('UPDATE apiKeys SET active = 1');
+  console.log('All API keys activated');
 }
 
-function deactivateAllKeys(db) {
-  db.run('UPDATE apiKeys SET active = 0', (err) => {
-    if (err) {
-      console.error('Error deactivating all API keys:', err.message);
-    } else {
-      console.log('All API keys deactivated');
-    }
-  });
+async function deactivateAllKeys() {
+  await db.run('UPDATE apiKeys SET active = 0');
+  console.log('All API keys deactivated');
 }
 
-function getKeyInfo(db, key) {
-  db.get('SELECT * FROM apiKeys WHERE key = ?', [key], (err, row) => {
-    if (err) {
-      console.error('Error retrieving API key info:', err.message);
-    } else if (row) {
-      console.log('API key info:', row);
-    } else {
-      console.log('No API key found with the given key.');
-    }
-  });
+async function getKeyInfo(key) {
+  if (!key) {
+    console.log('API key is required');
+    return;
+  }
+  const row = await db.get('SELECT * FROM apiKeys WHERE key = ?', [key]);
+  if (row) {
+    console.log('API key info:', row);
+  } else {
+    console.log('No API key found with the given key.');
+  }
 }
 
-function listInactiveKeys(db) {
-  db.all('SELECT key FROM apiKeys WHERE active = 0', [], (err, rows) => {
-    if (err) {
-      console.error('Error listing inactive API keys:', err.message);
-    } else {
-      console.log('Inactive API keys:', rows);
-    }
-  });
+async function listInactiveKeys() {
+  const rows = await db.all('SELECT key FROM apiKeys WHERE active = 0');
+  console.log('Inactive API keys:', rows);
 }
 
-function listActiveKeys(db) {
-  db.all('SELECT key FROM apiKeys WHERE active = 1', [], (err, rows) => {
-    if (err) {
-      console.error('Error listing active API keys:', err.message);
-    } else {
-      console.log('Active API keys:', rows);
-    }
-  });
+async function listActiveKeys() {
+  const rows = await db.all('SELECT key FROM apiKeys WHERE active = 1');
+  console.log('Active API keys:', rows);
 }
 
 function getOllamaURL() {
@@ -419,50 +337,37 @@ function getOllamaURL() {
     if (fs.existsSync('ollamaURL.conf')) {
       fs.readFile('ollamaURL.conf', 'utf8', (err, data) => {
         if (err) {
-          reject('Error reading Ollama url from file:', err.message);
+          reject(new Error('Error reading Ollama url from file: ' + err.message));
         } else {
           const ollamaURL = data.trim();
           if (typeof ollamaURL !== 'string' || ollamaURL === '') {
-            reject('Invalid Ollama url in ollamaURL.conf');
+            reject(new Error('Invalid Ollama url in ollamaURL.conf'));
           } else {
             resolve(ollamaURL);
           }
         }
       });
     } else {
-      reject('Ollama url configuration file not found');
+      reject(new Error('Ollama url configuration file not found'));
     }
   });
 }
 
-function sendWebhookNotification(db, payload) {
-  db.all('SELECT url FROM webhooks', [], (err, rows) => {
-    if (err) {
-      console.error('Error retrieving webhooks:', err.message);
-    } else {
-      rows.forEach(row => {
-        const webhookPayload = {
-          content: JSON.stringify(payload, null, 2)
-        };
-
-        axios.post(row.url, webhookPayload)
-          .then(response => {
-            console.log('Webhook notification sent successfully:', response.data);
-          })
-          .catch(error => {
-            console.error('Error sending webhook notification:', error.message);
-          });
-      });
+function sendWebhookNotification(payload) {
+  db.all('SELECT url FROM webhooks').then(rows => {
+    for (const row of rows) {
+      axios.post(row.url, { content: JSON.stringify(payload, null, 2) })
+        .catch(err => console.error('Error sending webhook notification:', err.message));
     }
+  }).catch(err => {
+    console.error('Error retrieving webhooks:', err.message);
   });
 }
 
 module.exports = {
   startServer,
-  askForPort,
-  askForOllamaURL,
+  resolveConfig,
   startCLI,
   getOllamaURL,
-  sendWebhookNotification,
-  updatePortAndRestart
+  sendWebhookNotification
 };

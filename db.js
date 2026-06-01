@@ -1,101 +1,107 @@
 const sqlite3 = require('sqlite3').verbose();
 
-let db;
+class Database {
+  constructor() {
+    this.db = null;
+  }
 
-function initializeDatabase() {
-  db = new sqlite3.Database('./apiKeys.db', sqlite3.OPEN_READWRITE | sqlite3.OPEN_CREATE, (err) => {
-    if (err) {
-      console.error('Error connecting to the database:', err.message);
-    } else {
-      console.log('Connected to the apiKeys.db database.');
-      createTables();
+  initialize() {
+    return new Promise((resolve, reject) => {
+      const dbPath = process.env.API_KEYS_DB_PATH || './apiKeys.db';
+      this.db = new sqlite3.Database(dbPath, sqlite3.OPEN_READWRITE | sqlite3.OPEN_CREATE, (err) => {
+        if (err) {
+          console.error('Error connecting to the database:', err.message);
+          reject(err);
+        } else {
+          console.log('Connected to the apiKeys.db database.');
+          this.createTables().then(resolve).catch(reject);
+        }
+      });
+    });
+  }
+
+  async createTables() {
+    await this.run(`CREATE TABLE IF NOT EXISTS apiKeys (
+      key TEXT PRIMARY KEY,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      last_used TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      tokens INTEGER DEFAULT 10,
+      rate_limit INTEGER DEFAULT 10,
+      active INTEGER DEFAULT 1,
+      description TEXT
+    )`);
+
+    await this.run(`CREATE TABLE IF NOT EXISTS apiUsage (
+      key TEXT,
+      timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )`);
+
+    await this.run(`CREATE TABLE IF NOT EXISTS webhooks (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      url TEXT NOT NULL
+    )`);
+
+    await this.ensureColumns();
+  }
+
+  async ensureColumns() {
+    const rows = await this.all("PRAGMA table_info(apiKeys)");
+    const columns = rows.map(row => row.name);
+
+    if (!columns.includes('active')) {
+      await this.run("ALTER TABLE apiKeys ADD COLUMN active INTEGER DEFAULT 1");
+      console.log("Added 'active' column to 'apiKeys' table.");
     }
-  });
-  return db;
-}
-
-  // Function to create the tables even if they do not exist in the database
-function createTables() {
-  db.run(`CREATE TABLE IF NOT EXISTS apiKeys (
-    key TEXT PRIMARY KEY,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    last_used TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    tokens INTEGER DEFAULT 10,
-    rate_limit INTEGER DEFAULT 10,
-    active INTEGER DEFAULT 1,
-    description TEXT
-  )`, (err) => {
-    if (err) {
-      console.error('Error creating apiKeys table:', err.message);
+    if (!columns.includes('description')) {
+      await this.run("ALTER TABLE apiKeys ADD COLUMN description TEXT");
+      console.log("Added 'description' column to 'apiKeys' table.");
     }
-  });
+  }
 
-  db.run(`CREATE TABLE IF NOT EXISTS apiUsage (
-    key TEXT,
-    timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-  )`, (err) => {
-    if (err) {
-      console.error('Error creating apiUsage table:', err.message);
-    }
-  });
+  get(sql, params = []) {
+    return new Promise((resolve, reject) => {
+      this.db.get(sql, params, (err, row) => {
+        if (err) reject(err);
+        else resolve(row);
+      });
+    });
+  }
 
-  db.run(`CREATE TABLE IF NOT EXISTS webhooks (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    url TEXT NOT NULL
-  )`, (err) => {
-    if (err) {
-      console.error('Error creating webhooks table:', err.message);
-    }
-  });
+  run(sql, params = []) {
+    return new Promise((resolve, reject) => {
+      this.db.run(sql, params, function (err) {
+        if (err) reject(err);
+        else resolve(this);
+      });
+    });
+  }
 
-  ensureColumns();
-}
+  all(sql, params = []) {
+    return new Promise((resolve, reject) => {
+      this.db.all(sql, params, (err, rows) => {
+        if (err) reject(err);
+        else resolve(rows);
+      });
+    });
+  }
 
-function ensureColumns() {
-  db.all("PRAGMA table_info(apiKeys)", (err, rows) => {
-    if (err) {
-      console.error('Error checking table info:', err.message);
-    } else {
-      const columns = rows.map(row => row.name);
-      if (!columns.includes('active')) {
-        db.run("ALTER TABLE apiKeys ADD COLUMN active INTEGER DEFAULT 1", (err) => {
-          if (err) {
-            console.error('Error adding active column:', err.message);
-          } else {
-            console.log("Added 'active' column to 'apiKeys' table.");
-          }
-        });
+  close() {
+    return new Promise((resolve, reject) => {
+      if (!this.db) {
+        resolve();
+        return;
       }
-      if (!columns.includes('description')) {
-        db.run("ALTER TABLE apiKeys ADD COLUMN description TEXT", (err) => {
-          if (err) {
-            console.error('Error adding description column:', err.message);
-          } else {
-            console.log("Added 'description' column to 'apiKeys' table.");
-          }
-        });
-      }
-    }
-  });
+      this.db.close((err) => {
+        if (err) {
+          console.error('Error closing the database connection:', err.message);
+          reject(err);
+        } else {
+          console.log('Closed the database connection.');
+          resolve();
+        }
+      });
+    });
+  }
 }
 
-function closeDatabase() {
-  db.close((err) => {
-    if (err) {
-      console.error('Error closing the database connection:', err.message);
-    } else {
-      console.log('Closed the database connection.');
-    }
-    process.exit(0);
-  });
-}
-
-function getDb() {
-  return db;
-}
-
-module.exports = {
-  initializeDatabase,
-  closeDatabase,
-  getDb
-};
+module.exports = new Database();
