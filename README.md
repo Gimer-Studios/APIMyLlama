@@ -434,6 +434,13 @@ prompt: Text prompt to generate a response.
 model: Machine learning model to use for text generation.
 stream: Boolean indicating whether to stream the response.
 ```
+## curl Use Case
+```
+curl -X POST http://localhost:<Port>/generate \
+  -H "Authorization: Bearer <APIKey>" \
+  -H "Content-Type: application/json" \
+  -d '{"prompt":"<Message>","model":"<Model>","stream":true}'
+```
 # Support
 If there are any issues please make a Github Issue Report. To get quicker support join our discord server.
 -[Discord Server](https://discord.gg/r6XazGtKg7) If there are any feature requests you may request them in the discord server. PLEASE NOTE this project is still in EARLY BETA. 

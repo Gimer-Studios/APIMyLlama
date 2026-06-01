@@ -1,130 +1,179 @@
-const { getOllamaURL, sendWebhookNotification } = require('./utils');
 const axios = require('axios');
+const db = require('./db');
+const { getOllamaURL, sendWebhookNotification } = require('./utils');
 
 const rateLimits = new Map();
 
-function setupRoutes(app, db) {
-  app.use((req, res, next) => rateLimitMiddleware(req, res, next, db));
-  app.get('/health', (req, res) => healthCheck(req, res, db));
-  app.post('/generate', (req, res) => generateResponse(req, res, db));
+function extractApiKey(req) {
+  const authHeader = req.headers.authorization;
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    return authHeader.slice(7);
+  }
+  return req.body?.apikey || req.query?.apikey || null;
 }
 
-function rateLimitMiddleware(req, res, next, db) {
-  const { apikey } = req.body;
-  if (!apikey) return next();
+async function verifyApiKey(apikey) {
+  if (!apikey) return null;
+  try {
+    return await db.get('SELECT * FROM apiKeys WHERE key = ?', [apikey]);
+  } catch {
+    return null;
+  }
+}
 
-  db.get('SELECT tokens, last_used, rate_limit, active FROM apiKeys WHERE key = ?', [apikey], (err, row) => {
-    if (err) {
-      console.error('Error checking API key for rate limit:', err.message);
-      return res.status(500).json({ error: 'Internal server error' });
+function setupRoutes(app) {
+  const healthHandler = async (req, res) => {
+    const apikey = extractApiKey(req);
+    if (!apikey) {
+      return res.status(401).json({ error: 'API key is required (use Authorization: Bearer header or ?apikey= param)' });
     }
 
-    if (row) {
-      if (row.active === 0) {
-        return res.status(403).json({ error: 'API key is deactivated' });
-      }
-
-      const currentTime = Date.now();
-      const minute = 60000;
-      const rateLimit = row.rate_limit;
-
-      if (!rateLimits.has(apikey)) {
-        rateLimits.set(apikey, { tokens: row.tokens, lastUsed: new Date(row.last_used).getTime() });
-      }
-
-      const rateLimitInfo = rateLimits.get(apikey);
-      const timeElapsed = currentTime - rateLimitInfo.lastUsed;
-
-      if (timeElapsed >= minute) {
-        rateLimitInfo.tokens = rateLimit;
-      }
-
-      if (rateLimitInfo.tokens > 0) {
-        rateLimitInfo.tokens -= 1;
-        rateLimitInfo.lastUsed = currentTime;
-        rateLimits.set(apikey, rateLimitInfo);
-
-        db.run('UPDATE apiKeys SET tokens = ?, last_used = ? WHERE key = ?', [rateLimitInfo.tokens, new Date(rateLimitInfo.lastUsed).toISOString(), apikey], (err) => {
-          if (err) {
-            console.error('Error updating tokens and last_used:', err.message);
-            return res.status(500).json({ error: 'Internal server error' });
-          }
-          next();
-        });
-      } else {
-        return res.status(429).json({ error: 'Rate limit exceeded. Try again later.' });
-      }
-    } else {
+    const keyInfo = await verifyApiKey(apikey);
+    if (!keyInfo) {
       return res.status(403).json({ error: 'Invalid API key' });
     }
-  });
-}
 
-function healthCheck(req, res, db) {
-  const apikey = req.query.apikey;
-
-  if (!apikey) {
-    return res.status(400).json({ error: 'API key is required' });
-  }
-
-  db.get('SELECT key FROM apiKeys WHERE key = ?', [apikey], (err, row) => {
-    if (err) {
-      console.error('Error checking API key:', err.message);
-      return res.status(500).json({ error: 'Internal server error' });
-    }
-    if (!row) {
-      console.log('Invalid API key:', apikey);
-      return res.status(403).json({ error: 'Invalid API Key' });
-    }
-
-    res.json({ status: 'API is healthy', timestamp: new Date() });
-  });
-}
-
-async function generateResponse(req, res, db) {
-  const { apikey, prompt, model, stream, images, raw } = req.body;
-
-  console.log('Request body:', req.body);
-
-  if (!apikey) {
-    return res.status(400).json({ error: 'API key is required' });
-  }
-
-  db.get('SELECT key FROM apiKeys WHERE key = ?', [apikey], async (err, row) => {
-    if (err) {
-      console.error('Error checking API key:', err.message);
-      return res.status(500).json({ error: 'Internal server error' });
-    }
-    if (!row) {
-      console.log('Invalid API key:', apikey);
-      return res.status(403).json({ error: 'Invalid API Key' });
-    }
-
+    let ollamaHealthy = false;
     try {
-      const ollamaURL = await getOllamaURL();
-      const OLLAMA_API_URL = `${ollamaURL}/api/generate`;
-
-      axios.post(OLLAMA_API_URL, { model, prompt, stream, images, raw })
-        .then(response => {
-          db.run('INSERT INTO apiUsage (key) VALUES (?)', [apikey], (err) => {
-            if (err) console.error('Error logging API usage:', err.message);
-          });
-
-          sendWebhookNotification(db, { apikey, prompt, model, stream, images, raw, timestamp: new Date() });
-
-          res.json(response.data);
-        })
-        .catch(error => {
-          console.error('Error making request to Ollama API:', error.message);
-          res.status(500).json({ error: 'Error making request to Ollama API' });
-        });
-    } catch (error) {
-      console.error(error);
-      res.status(500).json({ error: 'Error retrieving Ollama server port' });
+      const url = await getOllamaURL();
+      await axios.get(`${url}/api/tags`, { timeout: 5000 });
+      ollamaHealthy = true;
+    } catch {
+      ollamaHealthy = false;
     }
+
+    res.json({
+      status: ollamaHealthy ? 'healthy' : 'degraded',
+      ollama: ollamaHealthy ? 'reachable' : 'unreachable',
+      timestamp: new Date().toISOString()
+    });
+  };
+
+  const generateHandler = async (req, res) => {
+    const apikey = extractApiKey(req);
+    if (!apikey) {
+      return res.status(401).json({ error: 'API key is required (use Authorization: Bearer header)' });
+    }
+
+    const keyInfo = await verifyApiKey(apikey);
+    if (!keyInfo) {
+      return res.status(403).json({ error: 'Invalid API key' });
+    }
+    if (keyInfo.active === 0) {
+      return res.status(403).json({ error: 'API key is deactivated' });
+    }
+
+    const rateLimitError = checkRateLimit(apikey, keyInfo);
+    if (rateLimitError) {
+      return res.status(429).json({ error: rateLimitError });
+    }
+
+    await handleGenerate(req, res, apikey);
+  };
+
+  app.get('/v1/health', healthHandler);
+  app.post('/v1/generate', generateHandler);
+  app.get('/health', healthHandler);
+  app.post('/generate', generateHandler);
+}
+
+function checkRateLimit(apikey, keyInfo) {
+  const currentTime = Date.now();
+  const minute = 60000;
+  const rateLimit = keyInfo.rate_limit;
+
+  if (!rateLimits.has(apikey)) {
+    const lastUsed = new Date(keyInfo.last_used).getTime();
+    const timeElapsed = currentTime - lastUsed;
+    const tokens = timeElapsed >= minute ? rateLimit : Math.min(keyInfo.tokens, rateLimit);
+    rateLimits.set(apikey, { tokens, lastUsed });
+  }
+
+  const rateLimitInfo = rateLimits.get(apikey);
+  const timeElapsed = currentTime - rateLimitInfo.lastUsed;
+
+  if (timeElapsed >= minute) {
+    rateLimitInfo.tokens = rateLimit;
+    rateLimitInfo.lastUsed = currentTime;
+  }
+
+  if (rateLimitInfo.tokens <= 0) {
+    return 'Rate limit exceeded. Try again later.';
+  }
+
+  rateLimitInfo.tokens -= 1;
+  rateLimitInfo.lastUsed = currentTime;
+
+  db.run('UPDATE apiKeys SET tokens = ?, last_used = ? WHERE key = ?', [
+    rateLimitInfo.tokens,
+    new Date(rateLimitInfo.lastUsed).toISOString(),
+    apikey
+  ]).catch(err => console.error('Error updating tokens:', err.message));
+
+  return null;
+}
+
+async function handleGenerate(req, res, apikey) {
+  const { prompt, model, stream, images, raw } = req.body;
+
+  if (!prompt || !model) {
+    return res.status(400).json({ error: 'Both prompt and model are required' });
+  }
+
+  try {
+    const ollamaURL = await getOllamaURL();
+    const OLLAMA_API_URL = `${ollamaURL}/api/generate`;
+
+    if (stream) {
+      const ollamaResponse = await axios({
+        method: 'post',
+        url: OLLAMA_API_URL,
+        data: { model, prompt, stream: true, images, raw },
+        responseType: 'stream',
+        timeout: 300000
+      });
+
+      res.setHeader('Content-Type', 'application/x-ndjson');
+      ollamaResponse.data.pipe(res);
+
+      ollamaResponse.data.on('end', () => {
+        logUsage(apikey);
+        sendWebhook(apikey, prompt, model, stream, images, raw);
+      });
+    } else {
+      const ollamaResponse = await axios.post(OLLAMA_API_URL, { model, prompt, stream: false, images, raw }, {
+        timeout: 300000
+      });
+
+      logUsage(apikey);
+      sendWebhook(apikey, prompt, model, stream, images, raw);
+
+      res.json(ollamaResponse.data);
+    }
+  } catch (error) {
+    if (error.response) {
+      console.error('Ollama API error:', error.response.status, error.response.data);
+      res.status(error.response.status).json({ error: 'Ollama API error', detail: error.response.data });
+    } else if (error.code === 'ECONNREFUSED') {
+      console.error('Ollama server is not reachable:', error.message);
+      res.status(503).json({ error: 'Ollama server is not reachable' });
+    } else {
+      console.error('Error making request to Ollama API:', error.message);
+      res.status(500).json({ error: 'Error making request to Ollama API' });
+    }
+  }
+}
+
+function logUsage(apikey) {
+  db.run('INSERT INTO apiUsage (key) VALUES (?)', [apikey])
+    .catch(err => console.error('Error logging API usage:', err.message));
+}
+
+function sendWebhook(apikey, prompt, model, stream, images, raw) {
+  sendWebhookNotification({
+    apikey, prompt, model, stream, images, raw,
+    timestamp: new Date().toISOString()
   });
 }
 
-module.exports = {
-  setupRoutes
-};
+module.exports = { setupRoutes };

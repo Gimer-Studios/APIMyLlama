@@ -1,7 +1,14 @@
 {
+  "private": true,
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "scripts": {
+    "start": "node APIMyLlama.js"
+  },
   "dependencies": {
-    "axios": ">=1.13.5",
-    "express": ">=5.2.1",
+    "axios": "^1.13.5",
+    "express": "^5.2.1",
     "sqlite3": "^6.0.1"
   }
 }
